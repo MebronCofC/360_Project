@@ -1,3 +1,9 @@
+// imports
+import Events from "./components/events";
+import EventDetail from "./components/event-detail";
+import Checkout from "./components/checkout";
+import MyTickets from "./components/my-tickets";
+
 import Login from "./components/auth/login";
 import Register from "./components/auth/register";
 
@@ -24,6 +30,22 @@ function App() {
     {
       path: "/home",
       element: <Home />,
+    },
+    {
+      path: "/events",
+      element: <Events />,
+    },
+    {
+      path: "/events/:eventId",
+      element: <EventDetail />,
+    },
+    {
+      path: "/checkout",
+      element: <Checkout />,
+    },
+    {
+      path: "/my-tickets",
+      element: <MyTickets />,
     },
   ];
   let routesElement = useRoutes(routesArray);
