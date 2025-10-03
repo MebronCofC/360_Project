@@ -5,30 +5,67 @@ import { doSignOut } from '../../firebase/auth'
 
 const Header = () => {
     const navigate = useNavigate()
-    const { userLoggedIn } = useAuth()
+    const { userLoggedIn, currentUser } = useAuth() || { userLoggedIn: false, currentUser: null };
+    
+  const handleLogout = async () => {
+    try {
+      await doSignOut();
+      navigate("/login");
+    } catch (e) {
+      console.error("Logout failed:", e);
+    }
+  };
     return (
-        <nav className='flex flex-row gap-x-2 w-full z-20 fixed top-0 left-0 h-12 border-b place-content-center items-center bg-gray-200'>
-            {
-                userLoggedIn
-                    ?
-                    <>
-                        <button onClick={() => { doSignOut().then(() => { navigate('/login') }) }} className='text-sm text-blue-600 underline'>Logout</button>
-                    </>
-                    :
-                    <>
-                        {/* Show a button instead of a plain link so it behaves like a control */}
-                        <button
-                            onClick={() => navigate('/login')}
-                            className='text-sm px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition'
-                        >
-                            Login
-                        </button>
-                        <Link className='text-sm text-blue-600 underline ml-2' to={'/register'}>Register New Account</Link>
-                    </>
-            }
+    <nav className="fixed top-0 left-0 z-20 h-12 w-full border-b bg-gray-200">
+      <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-4">
+        {/* Brand / Home */}
+        <Link to="/" className="text-sm font-semibold text-indigo-700 hover:text-indigo-800">
+          Cougar Courtside
+        </Link>
 
-        </nav>
-    )
-}
+        {/* Primary nav (aligns with your diagrams / use cases) */}
+        <div className="flex items-center gap-x-4">
+          <Link to="/events" className="text-sm hover:text-indigo-700">
+            Events
+          </Link>
+          <Link to="/my-tickets" className="text-sm hover:text-indigo-700">
+            My Tickets
+          </Link>
+
+          {userLoggedIn ? (
+            <>
+              {currentUser?.email && (
+                <span className="hidden sm:inline text-xs text-gray-600">
+                  {currentUser.email}
+                </span>
+              )}
+              <button
+                onClick={handleLogout}
+                className="rounded-md bg-red-600 px-3 py-1 text-sm text-white transition hover:bg-red-700"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => navigate("/login")}
+                className="rounded-md bg-indigo-600 px-3 py-1 text-sm text-white transition hover:bg-indigo-700"
+              >
+                Login
+              </button>
+              <Link
+                to="/register"
+                className="text-sm text-blue-600 underline hover:text-blue-700"
+              >
+                Register
+              </Link>
+            </>
+          )}
+        </div>
+      </div>
+    </nav>
+  );
+};
 
 export default Header
