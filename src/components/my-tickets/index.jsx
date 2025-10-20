@@ -6,6 +6,7 @@ export default function MyTickets() {
   const { currentUser } = useAuth?.() || { currentUser: null };
   const [deletingTicket, setDeletingTicket] = useState(null);
   const [tickets, setTickets] = useState([]);
+  const [loaded, setLoaded] = useState(false);
 
   // Load & filter tickets for the logged-in user
   useEffect(() => {
@@ -19,8 +20,12 @@ export default function MyTickets() {
     } catch {
       setTickets([]);
     }
+    setLoaded(true);
   }, [currentUser?.uid]);
-  
+
+  if (!loaded) {
+    return <div className="max-w-3xl mx-auto p-6 mt-12">Loading...</div>;
+  }
   const removeTicket = (ticketId) => {
   
     const all = JSON.parse(localStorage.getItem("tickets") || "[]");
