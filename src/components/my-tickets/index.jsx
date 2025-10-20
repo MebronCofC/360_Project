@@ -41,7 +41,9 @@ export default function MyTickets() {
     window.location.reload();
   };
 
-
+  if (!currentUser?.uid) {  //guests can't see tickets
+    return <div className="max-w-3xl mx-auto p-6 mt-12">Please log in to view your tickets.</div>;
+  }
   if (!tickets.length) {
     return <div className="max-w-3xl mx-auto p-6 mt-12">No tickets yet.</div>;
   }
