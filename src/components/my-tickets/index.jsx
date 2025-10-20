@@ -3,7 +3,7 @@ import { releaseSeat } from "../../data/seatAssignments";
 import { useAuth } from "../../contexts/authContext";
 
 export default function MyTickets() {
-  const { currentUser } = useAuth.();
+  const { currentUser } = useAuth();
   const [deletingTicket, setDeletingTicket] = useState(null);
   const [tickets, setTickets] = useState([]);
   const [loaded, setLoaded] = useState(false);
