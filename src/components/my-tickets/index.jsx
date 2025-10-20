@@ -1,31 +1,44 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { releaseSeat } from "../../data/seatAssignments";
 import { useAuth } from "../../contexts/authContext";
-
 
 export default function MyTickets() {
   const { currentUser } = useAuth?.() || { currentUser: null };
   const [deletingTicket, setDeletingTicket] = useState(null);
+  const [tickets, setTickets] = useState([]);
+
+  // Load & filter tickets for the logged-in user
+  useEffect(() => {
+    try {
+      const all = JSON.parse(localStorage.getItem("tickets") || "[]");
+      if (currentUser?.uid) {
+        setTickets(all.filter(t => t.userId === currentUser.uid));
+      } else {
+        setTickets([]); // hide when logged out
+      }
+    } catch {
+      setTickets([]);
+    }
+  }, [currentUser?.uid]);
   
-  const tickets = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem("tickets") || "[]"); }
-    catch { return []; }
-  }, []);
-
   const removeTicket = (ticketId) => {
-  const all = JSON.parse(localStorage.getItem("tickets") || "[]");
-  const t = all.find(x => x.id === ticketId);
+  
+    const all = JSON.parse(localStorage.getItem("tickets") || "[]");
+    const t = all.find(x => x.id === ticketId);
 
-  if (t) {
-    // Free up the seat (only if this user owns it)
-    releaseSeat(t.eventId, t.seatId, currentUser?.uid || null);
-  }
+    if (t) {
+      // Free the seat only if this user owns it
+      releaseSeat(t.eventId, t.seatId, currentUser?.uid || null);
+    }
 
-  const remaining = all.filter(x => x.id !== ticketId);
+    const remaining = all.filter(x => x.id !== ticketId);
     localStorage.setItem("tickets", JSON.stringify(remaining));
 
-    // If you keep tickets in component state, also call your setter here:
-    // setTickets(remaining);
+    // Update local state to reflect removal immediately
+    setTickets(prev => prev.filter(x => x.id !== ticketId));
+
+    // Also do a quick page refresh so nothing "lingers" visually
+    window.location.reload();
   };
 
 
