@@ -1,10 +1,13 @@
 import React, { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { EVENTS, seatsForEvent } from "../../data/events";
+import { getSoldSeats } from "../../data/sales";
+
 
 export default function EventDetail() {
   const { eventId } = useParams();
   const navigate = useNavigate();
+  const sold = useMemo(() => getSoldSeats(eventId), [eventId]);
   const ev = useMemo(() => EVENTS.find(e => e.id === eventId), [eventId]);
   const [selected, setSelected] = useState([]);
 
@@ -47,16 +50,23 @@ export default function EventDetail() {
         <div className="grid grid-cols-6 gap-3">
           {seats.map(seat => {
             const isSelected = selected.includes(seat.id);
+            const isSold = sold.has(seat.id);
+          
             return (
               <button
                 key={seat.id}
-                onClick={() => toggleSeat(seat.id)}
+                onClick={() => !isSold && toggleSeat(seat.id)}
+                disabled={isSold}
                 className={[
                   "border rounded-lg py-2",
-                  isSelected ? "bg-indigo-600 text-white border-indigo-600" : "bg-white hover:bg-gray-50",
+                  isSold
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed line-through"
+                    : isSelected
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "bg-white hover:bg-gray-50",
                   seat.isAda ? "ring-2 ring-emerald-400" : ""
                 ].join(" ")}
-                title={seat.isAda ? "ADA seat" : "Standard"}
+                title={isSold ? "Seat already sold" : (seat.isAda ? "ADA seat" : "Standard")}
               >
                 {seat.label}
               </button>
