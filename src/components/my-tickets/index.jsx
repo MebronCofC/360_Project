@@ -1,6 +1,10 @@
 import React, { useMemo, useState } from "react";
+import { releaseSeat } from "../../data/seatAssignments";
+import { useAuth } from "../../contexts/authContext";
+
 
 export default function MyTickets() {
+  const { currentUser } = useAuth?.() || { currentUser: null };
   const [deletingTicket, setDeletingTicket] = useState(null);
   
   const tickets = useMemo(() => {
@@ -9,10 +13,21 @@ export default function MyTickets() {
   }, []);
 
   const removeTicket = (ticketId) => {
-    const updatedTickets = tickets.filter(ticket => ticket.id !== ticketId);
-    localStorage.setItem("tickets", JSON.stringify(updatedTickets));
-    window.location.reload(); // Refresh to update the UI
+  const all = JSON.parse(localStorage.getItem("tickets") || "[]");
+  const t = all.find(x => x.id === ticketId);
+
+  if (t) {
+    // Free up the seat (only if this user owns it)
+    releaseSeat(t.eventId, t.seatId, currentUser?.uid || null);
+  }
+
+  const remaining = all.filter(x => x.id !== ticketId);
+    localStorage.setItem("tickets", JSON.stringify(remaining));
+
+    // If you keep tickets in component state, also call your setter here:
+    // setTickets(remaining);
   };
+
 
   if (!tickets.length) {
     return <div className="max-w-3xl mx-auto p-6 mt-12">No tickets yet.</div>;
