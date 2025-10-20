@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { areAvailable, assignSeats } from "../../data/seatAssignments";
+import { useAuth } from "../../contexts/authContext"; // to get currentUser?.uid
+
 
 // simple base64 QR fallback (no deps) — encodes a text payload and displays it
 function FakeQR({ value }) {
@@ -12,6 +15,8 @@ function FakeQR({ value }) {
 }
 
 export default function Checkout() {
+  const { currentUser } = useAuth?.() || { currentUser: null };
+  const ownerUid = currentUser?.uid || null;
   const navigate = useNavigate();
   const [saved, setSaved] = useState(false);
 
@@ -30,24 +35,48 @@ export default function Checkout() {
   const total = pending.subtotal * 0.8; // apply 20% demo student discount
 
   const confirm = () => {
-    // create “tickets” for each seat and persist in localStorage
-    const existing = JSON.parse(localStorage.getItem("tickets") || "[]");
-    const newTickets = pending.seats.map(seatId => ({
-      id: `t_${Math.random().toString(36).slice(2,10)}`,
-      orderId,
-      eventId: pending.eventId,
-      eventTitle: pending.eventTitle,
-      startTime: pending.startTime,
-      seatId,
-      qrPayload: `ticket:${orderId}:${seatId}:${pending.eventId}`,
-      status: "Issued",
-      createdAt: Date.now()
-    }));
-    const all = [...existing, ...newTickets];
-    localStorage.setItem("tickets", JSON.stringify(all));
-    localStorage.removeItem("pendingOrder");
-    setSaved(true);
-  };
+  // 1) check for conflicts (already owned seats)
+  const conflicts = areAvailable(pending.eventId, pending.seats);
+  if (conflicts.length > 0) {
+    alert(`Sorry, these seats are currently owned: ${conflicts.join(", ")}.\nPlease go back and pick different seats.`);
+    return;
+  }
+
+  // 2) consistent IDs per seat
+  const orderId = `ord_${Math.random().toString(36).slice(2,10)}`;
+  const ticketIdBySeat = {};
+  pending.seats.forEach(seatId => {
+    ticketIdBySeat[seatId] = `t_${Math.random().toString(36).slice(2,10)}`;
+  });
+
+  // 3) assign seats to this user
+  try {
+    assignSeats(pending.eventId, pending.seats, ownerUid, ticketIdBySeat);
+  } catch (e) {
+    alert("One or more seats just got taken. Please reselect.");
+    return;
+  }
+
+  // 4) create tickets for this user (local demo)
+  const existing = JSON.parse(localStorage.getItem("tickets") || "[]");
+  const newTickets = pending.seats.map(seatId => ({
+    id: ticketIdBySeat[seatId],
+    orderId,
+    ownerUid,
+    eventId: pending.eventId,
+    eventTitle: pending.eventTitle,
+    startTime: pending.startTime,
+    seatId,
+    qrPayload: `ticket:${orderId}:${seatId}:${pending.eventId}`,
+    status: "Issued",
+    createdAt: Date.now()
+  }));
+  const all = [...existing, ...newTickets];
+  localStorage.setItem("tickets", JSON.stringify(all));
+  localStorage.removeItem("pendingOrder");
+  setSaved(true);
+};
+
 
   return (
     <div className="max-w-3xl mx-auto p-6 mt-12 space-y-6">
