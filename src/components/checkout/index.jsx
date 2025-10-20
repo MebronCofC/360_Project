@@ -15,7 +15,7 @@ function FakeQR({ value }) {
 }
 
 export default function Checkout() {
-  const { currentUser } = useAuth?.() || { currentUser: null };
+  const { currentUser } = useAuth?.();
   const ownerUid = currentUser?.uid || null;
   const navigate = useNavigate();
   const [saved, setSaved] = useState(false);
@@ -36,6 +36,11 @@ export default function Checkout() {
   const total = pending.subtotal * 0.8; // apply 20% demo student discount
 
   const confirm = () => {
+     if (!currentUser?.uid) {
+       alert("Please log in before purchasing tickets.");
+       navigate("/login");
+       return;
+     }
   // 1) check for conflicts (already owned seats)
   const conflicts = areAvailable(pending.eventId, pending.seats);
     
