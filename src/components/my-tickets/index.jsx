@@ -3,7 +3,7 @@ import { releaseSeat } from "../../data/seatAssignments";
 import { useAuth } from "../../contexts/authContext";
 
 export default function MyTickets() {
-  const { currentUser } = useAuth?.() || { currentUser: null };
+  const { currentUser } = useAuth.();
   const [deletingTicket, setDeletingTicket] = useState(null);
   const [tickets, setTickets] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -13,7 +13,7 @@ export default function MyTickets() {
     try {
       const all = JSON.parse(localStorage.getItem("tickets") || "[]");
       if (currentUser?.uid) {
-        setTickets(all.filter(t => t.userId === currentUser.uid));
+        setTickets(all.filter(t => t.ownerUid === currentUser.uid));
       } else {
         setTickets([]); // hide when logged out
       }
@@ -40,8 +40,7 @@ export default function MyTickets() {
     localStorage.setItem("tickets", JSON.stringify(remaining));
 
     // Update local state to reflect removal immediately
-    setTickets(prev => prev.filter(x => x.id !== ticketId));
-
+    setTickets(prev => prev.filter(x => x.id !== ticketId)); // update list now
     // Also do a quick page refresh so nothing "lingers" visually
     window.location.reload();
   };
