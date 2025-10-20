@@ -19,6 +19,7 @@ export default function Checkout() {
   const ownerUid = currentUser?.uid || null;
   const navigate = useNavigate();
   const [saved, setSaved] = useState(false);
+  
 
   const pending = useMemo(() => {
     try { return JSON.parse(localStorage.getItem("pendingOrder") || "null"); }
@@ -31,19 +32,20 @@ export default function Checkout() {
 
   if (!pending) return null;
 
-  const orderId = `ord_${Math.random().toString(36).slice(2,10)}`;
+  const [orderId, setOrderId] = useState(null);
   const total = pending.subtotal * 0.8; // apply 20% demo student discount
 
   const confirm = () => {
   // 1) check for conflicts (already owned seats)
   const conflicts = areAvailable(pending.eventId, pending.seats);
+    
   if (conflicts.length > 0) {
     alert(`Sorry, these seats are currently owned: ${conflicts.join(", ")}.\nPlease go back and pick different seats.`);
     return;
   }
 
   // 2) consistent IDs per seat
-  const orderId = `ord_${Math.random().toString(36).slice(2,10)}`;
+  const newOrderId = `ord_${Math.random().toString(36).slice(2,10)}`;
   const ticketIdBySeat = {};
   pending.seats.forEach(seatId => {
     ticketIdBySeat[seatId] = `t_${Math.random().toString(36).slice(2,10)}`;
@@ -61,19 +63,20 @@ export default function Checkout() {
   const existing = JSON.parse(localStorage.getItem("tickets") || "[]");
   const newTickets = pending.seats.map(seatId => ({
     id: ticketIdBySeat[seatId],
-    orderId,
+    orderId: newOrderId,
     ownerUid,
     eventId: pending.eventId,
     eventTitle: pending.eventTitle,
     startTime: pending.startTime,
     seatId,
-    qrPayload: `ticket:${orderId}:${seatId}:${pending.eventId}`,
+    qrPayload: `ticket:${newOrderId}:${seatId}:${pending.eventId}`,
     status: "Issued",
     createdAt: Date.now()
   }));
   const all = [...existing, ...newTickets];
   localStorage.setItem("tickets", JSON.stringify(all));
   localStorage.removeItem("pendingOrder");
+  setOrderId(newOrderId);
   setSaved(true);
 };
 
