@@ -16,7 +16,7 @@ export default function Events() {
               </div>
             </div>
             <Link
-              to={`/events/${ev.id}`}
+              to={`/events/${ev.id}/sections`}
               className="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700"
             >
               View seats
