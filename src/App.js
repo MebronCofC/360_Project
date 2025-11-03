@@ -1,6 +1,7 @@
 // imports
 import Events from "./components/events";
 import EventDetail from "./components/event-detail";
+import SectionSelect from "./components/section-select";
 import Checkout from "./components/checkout";
 import MyTickets from "./components/my-tickets";
 
@@ -34,6 +35,14 @@ function App() {
     {
       path: "/events",
       element: <Events />,
+    },
+    {
+    path: "/events/:eventId/sections",
+    element: <SectionSelect />, 
+    },
+    {
+    path: "/events/:eventId/section/:sectionId",
+    element: <EventDetail />,
     },
     {
       path: "/events/:eventId",
