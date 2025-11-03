@@ -4,11 +4,16 @@ import { EVENTS, seatsForEvent } from "../../data/events";
 import { getAssignedSeats } from "../../data/seatAssignments";
 
 export default function EventDetail() {
-  const { eventId } = useParams();
+  const { eventId, sectionId } = useParams();
   const navigate = useNavigate();
 
   const ev = useMemo(() => EVENTS.find((e) => e.id === eventId), [eventId]);
-  const seats = useMemo(() => seatsForEvent(eventId), [eventId]);
+  const seats = useMemo(() => {
+  const all = seatsForEvent(eventId);
+  if (!sectionId) return all;
+  // Filter seats that start with the chosen section letter, e.g., "A1", "B3"
+  return all.filter(s => s.id.startsWith(sectionId));
+  }, [eventId, sectionId]);
 
   // Seats already taken for this event (Set of seatIds)
   const taken = useMemo(() => getAssignedSeats(eventId), [eventId]);
@@ -56,6 +61,12 @@ export default function EventDetail() {
 
   return (
     <div className="max-w-3xl mx-auto p-6 mt-12">
+      {sectionId && (
+  <div className="mb-4 text-sm">
+    <span className="mr-2 text-gray-600">Selected Section:</span>
+    <span className="inline-block px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-medium">{sectionId}</span>
+    </div>
+      )}
       {/* Header */}
       <div className="mb-6">
         <button
