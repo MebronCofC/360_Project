@@ -14,6 +14,7 @@ export function AuthProvider({ children }) {
   const [userLoggedIn, setUserLoggedIn] = useState(false);
   const [isEmailUser, setIsEmailUser] = useState(false);
   const [isGoogleUser, setIsGoogleUser] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,9 +22,8 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
-  async function initializeUser(user) {
+  function initializeUser(user) {
     if (user) {
-
       setCurrentUser({ ...user });
 
       // check if provider is email and password login
@@ -33,17 +33,23 @@ export function AuthProvider({ children }) {
       setIsEmailUser(isEmail);
 
       // check if the auth provider is google or not
-    //   const isGoogle = user.providerData.some(
-    //     (provider) => provider.providerId === GoogleAuthProvider.PROVIDER_ID
-    //   );
-    //   setIsGoogleUser(isGoogle);
+      // const isGoogle = user.providerData.some(
+      //     (provider) => provider.providerId === GoogleAuthProvider.PROVIDER_ID
+      // );
+      // setIsGoogleUser(isGoogle);
 
       setUserLoggedIn(true);
+      // admin detection
+      const adminEmails = [
+        'mebneon@gmail.com',
+      ];
+      const isAdminUser = user.email && adminEmails.includes(user.email.toLowerCase());
+      setIsAdmin(!!isAdminUser);
     } else {
       setCurrentUser(null);
       setUserLoggedIn(false);
+      setIsAdmin(false);
     }
-
     setLoading(false);
   }
 
@@ -51,6 +57,7 @@ export function AuthProvider({ children }) {
     userLoggedIn,
     isEmailUser,
     isGoogleUser,
+    isAdmin,
     currentUser,
     setCurrentUser
   };

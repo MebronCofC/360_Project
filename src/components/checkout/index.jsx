@@ -19,21 +19,22 @@ export default function Checkout() {
   const ownerUid = currentUser?.uid || null;
   const navigate = useNavigate();
   const [saved, setSaved] = useState(false);
-  
 
   const pending = useMemo(() => {
     try { return JSON.parse(localStorage.getItem("pendingOrder") || "null"); }
     catch { return null; }
   }, []);
 
+  // Move hooks above conditional returns
+  const [orderId, setOrderId] = useState(null);
+  // Use 0 if pending is null to avoid error
+  const total = pending ? pending.subtotal * 0.8 : 0; // apply 20% demo student discount
+
   useEffect(() => {
     if (!pending) navigate("/events");
   }, [pending, navigate]);
 
   if (!pending) return null;
-
-  const [orderId, setOrderId] = useState(null);
-  const total = pending.subtotal * 0.8; // apply 20% demo student discount
 
   const confirm = () => {
      if (!currentUser?.uid) {
@@ -87,8 +88,10 @@ export default function Checkout() {
 
 
   return (
-    <div className="max-w-3xl mx-auto p-6 mt-12 space-y-6">
-      <h1 className="text-2xl font-semibold">Checkout</h1>
+    <div className="max-w-3xl mx-auto p-6 mt-12 space-y-6" style={{position:'relative'}}>
+      <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'#fff',borderRadius:'1.5rem',zIndex:0,boxShadow:'0 4px 24px rgba(0,0,0,0.10)'}}></div>
+      <div style={{position:'relative',zIndex:1}}>
+  <h1 className="text-2xl font-semibold">Checkout</h1>
       <div className="border rounded-xl p-4">
         <div className="font-medium mb-2">{pending.eventTitle}</div>
         <div className="text-gray-600 mb-4">{new Date(pending.startTime).toLocaleString()}</div>
@@ -124,6 +127,7 @@ export default function Checkout() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

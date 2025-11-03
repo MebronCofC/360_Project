@@ -1,3 +1,54 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+body {
+	background: #8c0101 !important;
+}
+
+/* Red themed card for admin UI */
+.admin-card {
+	background-color: #ded4d4; /* red-700 */
+	color: #7b7976;
+	border-radius: 0.75rem;
+	box-shadow: 0 6px 18px rgba(185,28,28,0.12);
+	padding: 2rem;
+	margin-bottom: 2rem;
+	position: relative;
+	z-index: 1;
+}
+
+.admin-card::before {
+	content: "";
+	position: absolute;
+	top: 0; left: 0; right: 0; bottom: 0;
+	z-index: -1;
+	background: rgba(0,0,0,0.18);
+	border-radius: 0.75rem;
+	filter: blur(2px);
+}
+
+.app-card {
+	position: relative;
+	z-index: 1;
+}
+.app-card::before {
+	content: "";
+	position: absolute;
+	top: 0; left: 0; right: 0; bottom: 0;
+	z-index: -1;
+	background: rgba(255,255,255,0.7);
+	border-radius: 0.75rem;
+	filter: blur(2px);
+}
+
+.admin-btn {
+	background-color: #fff7cd;
+	color: #fffdfa;
+	border: none;
+	padding: 0.75rem 1.5rem;
+	border-radius: 0.5rem;
+	font-weight: 600;
+	margin-right: 0.5rem;
+	margin-bottom: 0.5rem;
+	transition: background 0.2s;
+}
+.admin-btn:hover {
+	background-color: #991b1b; /* red-800 */
+}
