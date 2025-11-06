@@ -1,70 +1,64 @@
 // src/data/seatAssignments.js
+import { 
+  checkSeatsAvailability, 
+  assignSeatsInDB, 
+  releaseSeatInDB,
+  getTicketsForUserFromDB
+} from "../firebase/firestore";
 
-const KEY = "seatAssignments";
 /**
- * localStorage shape:
- * {
- *   [eventId]: {
- *     [seatId]: { ticketId: "t_xxx", ownerUid: "uid123" }
- *   }
- * }
+ * Get assigned seats for an event (returns Set of seatIds)
  */
-
-function readAll() {
+export async function getAssignedSeats(eventId) {
   try {
-    return JSON.parse(localStorage.getItem(KEY) || "{}");
-  } catch {
-    return {};
+    // This is a placeholder - in real usage, we'd query all tickets for this event
+    // For now, we'll return an empty set and rely on checkSeatsAvailability
+    return new Set();
+  } catch (error) {
+    console.error("Error getting assigned seats:", error);
+    return new Set();
   }
 }
-function writeAll(data) {
-  localStorage.setItem(KEY, JSON.stringify(data));
+
+/** 
+ * Returns any seats that are already taken (i.e., NOT available) 
+ */
+export async function areAvailable(eventId, seatIds = []) {
+  const unavailable = await checkSeatsAvailability(eventId, seatIds);
+  return unavailable;
 }
 
-export function getAssignedSeats(eventId) {
-  const all = readAll();
-  const map = all[eventId] || {};
-  return new Set(Object.keys(map));
-}
-
-/** Returns any seats that are already taken (i.e., NOT available) */
-export function areAvailable(eventId, seatIds = []) {
-  const assigned = getAssignedSeats(eventId);
-  return seatIds.filter(s => assigned.has(s));
-}
-
-/** Assign seats to an owner; throws if any already taken */
-export function assignSeats(eventId, seatIds = [], ownerUid, ticketIdBySeat = {}) {
-  const all = readAll();
-  const eventMap = all[eventId] || {};
-
-  for (const seatId of seatIds) {
-    if (eventMap[seatId]) {
-      throw new Error(`Seat ${seatId} already assigned`);
-    }
+/** 
+ * Assign seats to an owner; throws if any already taken 
+ */
+export async function assignSeats(eventId, seatIds = [], ownerUid, ticketIdBySeat = {}) {
+  try {
+    // Get event details for the tickets
+    const eventTitle = "Event"; // You can pass this in or fetch from DB
+    const startTime = new Date().toISOString(); // Or fetch from event
+    
+    const orderId = await assignSeatsInDB(eventId, seatIds, ownerUid, eventTitle, startTime);
+    
+    return seatIds.map(seatId => ({
+      seatId,
+      ticketId: ticketIdBySeat[seatId] || `t_${Math.random().toString(36).slice(2, 10)}`,
+      orderId
+    }));
+  } catch (error) {
+    console.error("Error assigning seats:", error);
+    throw error;
   }
-
-  for (const seatId of seatIds) {
-    const ticketId = ticketIdBySeat[seatId] || `t_${Math.random().toString(36).slice(2,10)}`;
-    eventMap[seatId] = { ticketId, ownerUid: ownerUid || null };
-  }
-
-  all[eventId] = eventMap;
-  writeAll(all);
-
-  return seatIds.map(seatId => ({ seatId, ticketId: eventMap[seatId].ticketId }));
 }
 
-/** Release a seat (only by same owner); returns true if released */
-export function releaseSeat(eventId, seatId, ownerUid) {
-  const all = readAll();
-  const eventMap = all[eventId] || {};
-  const entry = eventMap[seatId];
-  if (!entry) return false;
-  if (entry.ownerUid && ownerUid && entry.ownerUid !== ownerUid) return false;
-
-  delete eventMap[seatId];
-  all[eventId] = eventMap;
-  writeAll(all);
-  return true;
+/** 
+ * Release a seat (only by same owner); returns true if released 
+ */
+export async function releaseSeat(eventId, seatId, ownerUid) {
+  try {
+    await releaseSeatInDB(eventId, seatId, ownerUid);
+    return true;
+  } catch (error) {
+    console.error("Error releasing seat:", error);
+    return false;
+  }
 }

@@ -1,81 +1,85 @@
 // src/data/events.js
-export const EVENTS = [
-  { id: "bb-2025-01", title: "CofC vs UNCW", startTime: "2025-11-12T19:00:00", venueId: "td-arena", basePrice: 20 },
-  { id: "bb-2025-02", title: "CofC vs W&M",  startTime: "2025-11-20T19:00:00", venueId: "td-arena", basePrice: 22 },
-];
+import { 
+  getEventsFromDB, 
+  addEventToDB, 
+  deleteEventFromDB,
+  getSeatsForEventFromDB,
+  addSeatToEventInDB,
+  deleteSeatFromDB,
+  updateSeatInDB
+} from "../firebase/firestore";
 
-// keep the seat list small for the prototype
-export function seatsForEvent(eventId) {
-  // 12 demo seats, include a few ADA
+// Default demo seats for new events
+export function getDefaultSeats() {
   return [
-    { id: "A1", label: "A1", isAda: false },
-    { id: "A2", label: "A2", isAda: false },
-    { id: "A3", label: "A3", isAda: false },
-    { id: "A4", label: "A4", isAda: true  },
-    { id: "B1", label: "B1", isAda: false },
-    { id: "B2", label: "B2", isAda: false },
-    { id: "B3", label: "B3", isAda: false },
-    { id: "B4", label: "B4", isAda: true  },
-    { id: "C1", label: "C1", isAda: false },
-    { id: "C2", label: "C2", isAda: false },
-    { id: "C3", label: "C3", isAda: false },
-    { id: "C4", label: "C4", isAda: false },
+    { seatId: "A1", label: "A1", isAda: false },
+    { seatId: "A2", label: "A2", isAda: false },
+    { seatId: "A3", label: "A3", isAda: false },
+    { seatId: "A4", label: "A4", isAda: true  },
+    { seatId: "B1", label: "B1", isAda: false },
+    { seatId: "B2", label: "B2", isAda: false },
+    { seatId: "B3", label: "B3", isAda: false },
+    { seatId: "B4", label: "B4", isAda: true  },
+    { seatId: "C1", label: "C1", isAda: false },
+    { seatId: "C2", label: "C2", isAda: false },
+    { seatId: "C3", label: "C3", isAda: false },
+    { seatId: "C4", label: "C4", isAda: false },
   ];
 }
 
-// Persistent event helpers
-export function getEvents() {
-  const stored = localStorage.getItem('events');
-  if (stored) {
-    try {
-      return JSON.parse(stored);
-    } catch {
-      return [...EVENTS];
-    }
+// ==================== EVENTS ====================
+
+export async function getEvents() {
+  return await getEventsFromDB();
+}
+
+export async function addEvent(event) {
+  const eventId = await addEventToDB(event);
+  
+  // Add default seats for new event
+  const defaultSeats = getDefaultSeats();
+  for (const seat of defaultSeats) {
+    await addSeatToEventInDB(eventId, seat);
   }
-  return [...EVENTS];
+  
+  return eventId;
 }
 
-export function addEvent(event) {
-  const events = getEvents();
-  events.push(event);
-  localStorage.setItem('events', JSON.stringify(events));
+export async function removeEvent(eventId) {
+  await deleteEventFromDB(eventId);
 }
 
-export function removeEvent(eventId) {
-  const events = getEvents().filter(e => e.id !== eventId);
-  localStorage.setItem('events', JSON.stringify(events));
-  // Also remove seats for this event
-  localStorage.removeItem(`seats_${eventId}`);
+// ==================== SEATS ====================
+
+export async function getSeatsForEvent(eventId) {
+  const seats = await getSeatsForEventFromDB(eventId);
+  // If no seats exist, return default seats for compatibility
+  return seats.length > 0 ? seats : getDefaultSeats();
 }
 
-// Persistent seat helpers
-export function getSeatsForEvent(eventId) {
-  const stored = localStorage.getItem(`seats_${eventId}`);
-  if (stored) {
-    try {
-      return JSON.parse(stored);
-    } catch {
-      return seatsForEvent(eventId);
-    }
+export async function addSeatToEvent(eventId, seat) {
+  return await addSeatToEventInDB(eventId, seat);
+}
+
+export async function removeSeatFromEvent(eventId, seatId) {
+  // Find the seat document by eventId and seatId
+  const seats = await getSeatsForEventFromDB(eventId);
+  const seatDoc = seats.find(s => s.seatId === seatId);
+  if (seatDoc && seatDoc.id) {
+    await deleteSeatFromDB(seatDoc.id);
   }
-  return seatsForEvent(eventId);
 }
 
-export function addSeatToEvent(eventId, seat) {
-  const seats = getSeatsForEvent(eventId);
-  seats.push(seat);
-  localStorage.setItem(`seats_${eventId}`, JSON.stringify(seats));
+export async function updateSeatForEvent(eventId, seatId, updates) {
+  // Find the seat document by eventId and seatId
+  const seats = await getSeatsForEventFromDB(eventId);
+  const seatDoc = seats.find(s => s.seatId === seatId);
+  if (seatDoc && seatDoc.id) {
+    await updateSeatInDB(seatDoc.id, updates);
+  }
 }
 
-export function removeSeatFromEvent(eventId, seatId) {
-  const seats = getSeatsForEvent(eventId).filter(s => s.id !== seatId);
-  localStorage.setItem(`seats_${eventId}`, JSON.stringify(seats));
-}
-
-export function updateSeatForEvent(eventId, seatId, updates) {
-  const seats = getSeatsForEvent(eventId).map(s =>
-    s.id === seatId ? { ...s, ...updates } : s
-  );
-  localStorage.setItem(`seats_${eventId}`, JSON.stringify(seats));
+// Async version for fetching seats
+export async function seatsForEvent(eventId) {
+  return await getSeatsForEvent(eventId);
 }

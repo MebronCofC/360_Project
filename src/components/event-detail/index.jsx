@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { getEvents, seatsForEvent, getSeatsForEvent, addSeatToEvent, removeSeatFromEvent, updateSeatForEvent } from "../../data/events";
 import { assignSeats } from "../../data/seatAssignments";
 import { useAuth } from "../../contexts/authContext";
@@ -8,57 +8,118 @@ import { getAssignedSeats } from "../../data/seatAssignments";
 export default function EventDetail() {
   const { eventId } = useParams();
   const navigate = useNavigate();
-
-  const ev = useMemo(() => getEvents().find((e) => e.id === eventId), [eventId]);
-  const seats = useMemo(() => seatsForEvent(eventId), [eventId]);
-  const [adminSeats, setAdminSeats] = React.useState(() => getSeatsForEvent(eventId));
   const { isAdmin } = useAuth();
-  // admin helpers
-  const refreshSeats = () => setAdminSeats(getSeatsForEvent(eventId));
+  const [searchParams] = useSearchParams();
+  const sectionNumber = searchParams.get('section');
 
-  const onAddSeat = (e) => {
+  const [loading, setLoading] = useState(true);
+  const [ev, setEv] = useState(null);
+  const [seats, setSeats] = useState([]);
+  const [adminSeats, setAdminSeats] = useState([]);
+  const [taken, setTaken] = useState(new Set());
+  const [selected, setSelected] = useState([]);
+
+  // Load event and seats data
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const events = await getEvents();
+        const event = events.find((e) => e.id === eventId);
+        setEv(event);
+
+        if (event) {
+          const eventSeats = await seatsForEvent(eventId);
+          setSeats(eventSeats);
+          
+          if (isAdmin) {
+            const allSeats = await getSeatsForEvent(eventId);
+            setAdminSeats(allSeats);
+          }
+
+          const takenSeats = await getAssignedSeats(eventId);
+          setTaken(takenSeats);
+        }
+      } catch (error) {
+        console.error('Error loading event data:', error);
+        alert('Failed to load event data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, [eventId, isAdmin]);
+
+  // Refresh seats (for admin)
+  const refreshSeats = async () => {
+    try {
+      const allSeats = await getSeatsForEvent(eventId);
+      setAdminSeats(allSeats);
+      const eventSeats = await seatsForEvent(eventId);
+      setSeats(eventSeats);
+    } catch (error) {
+      console.error('Error refreshing seats:', error);
+    }
+  };
+
+  const onAddSeat = async (e) => {
     e.preventDefault();
     const form = e.target;
     const id = form.id.value.trim();
     const label = form.label.value.trim() || id;
     const isAda = !!form.isAda.checked;
     if (!id) return;
-    addSeatToEvent(eventId, { id, label, isAda });
-    form.reset();
-    refreshSeats();
+    
+    try {
+      await addSeatToEvent(eventId, { id, label, isAda });
+      form.reset();
+      await refreshSeats();
+    } catch (error) {
+      console.error('Error adding seat:', error);
+      alert('Failed to add seat');
+    }
   };
 
   // eslint-disable-next-line no-restricted-globals
-  const onRemoveSeat = (seatId) => {
+  const onRemoveSeat = async (seatId) => {
     if (!window.confirm('Remove seat ' + seatId + '?')) return;
-    removeSeatFromEvent(eventId, seatId);
-    refreshSeats();
+    try {
+      await removeSeatFromEvent(eventId, seatId);
+      await refreshSeats();
+    } catch (error) {
+      console.error('Error removing seat:', error);
+      alert('Failed to remove seat');
+    }
   };
 
-  // No confirm here, just updating seat
-  const onToggleAda = (seatId) => {
-    const seat = getSeatsForEvent(eventId).find(s => s.id === seatId);
-    if (!seat) return;
-    updateSeatForEvent(eventId, seatId, { isAda: !seat.isAda });
-    refreshSeats();
+  const onToggleAda = async (seatId) => {
+    try {
+      const allSeats = await getSeatsForEvent(eventId);
+      const seat = allSeats.find(s => s.id === seatId);
+      if (!seat) return;
+      await updateSeatForEvent(eventId, seatId, { isAda: !seat.isAda });
+      await refreshSeats();
+    } catch (error) {
+      console.error('Error toggling ADA:', error);
+      alert('Failed to update seat');
+    }
   };
 
-  const onRegisterSeat = (seatId) => {
+  const onRegisterSeat = async (seatId) => {
     const ownerUid = prompt('Enter owner UID to register this seat for:');
     if (!ownerUid) return;
     try {
-      assignSeats(eventId, [seatId], ownerUid);
+      await assignSeats(eventId, [seatId], ownerUid);
       alert('Seat registered');
+      const takenSeats = await getAssignedSeats(eventId);
+      setTaken(takenSeats);
     } catch (e) {
       alert('Failed to register seat: ' + e.message);
     }
   };
 
-  // Seats already taken for this event (Set of seatIds)
-  const taken = useMemo(() => getAssignedSeats(eventId), [eventId]);
-
-  // User’s current selections (array of seatIds)
-  const [selected, setSelected] = useState([]);
+  if (loading) {
+    return <div className="p-6 mt-12">Loading event...</div>;
+  }
 
   if (!ev) {
     return <div className="p-6 mt-12">Event not found.</div>;
@@ -114,6 +175,13 @@ export default function EventDetail() {
         <div className="text-sm text-gray-500">
           {new Date(ev.startTime).toLocaleString()} • {ev.venueId}
         </div>
+        
+        {/* Section Number Display */}
+        {sectionNumber && (
+          <div className="mt-3 inline-block px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold">
+            Seat Selection for Section {sectionNumber}
+          </div>
+        )}
 
       {/* Seating legend */}
       <div className="mb-4 flex items-center gap-4 text-sm">
@@ -137,13 +205,13 @@ export default function EventDetail() {
           <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'#fff',borderRadius:'1rem',zIndex:0,boxShadow:'0 2px 12px rgba(0,0,0,0.08)'}}></div>
           <div className="grid grid-cols-4 gap-4" style={{position:'relative',zIndex:1}}>
         {seats.map((seat) => {
-          const isTaken = taken.has(seat.id);
-          const isSelected = selected.includes(seat.id);
+          const isTaken = taken.has(seat.seatId);
+          const isSelected = selected.includes(seat.seatId);
           return (
             <button
-              key={seat.id}
+              key={seat.seatId}
               disabled={isTaken}
-              onClick={() => toggleSeat(seat.id)}
+              onClick={() => toggleSeat(seat.seatId)}
               className={[
                 "px-4 py-3 rounded-lg border text-base transition-colors mb-2",
                 isTaken
@@ -175,14 +243,14 @@ export default function EventDetail() {
           </form>
           <div className="space-y-3">
             {adminSeats.map(s => (
-              <div key={s.id} className="flex items-center justify-between border rounded p-3 mb-2 bg-red-50">
+              <div key={s.seatId} className="flex items-center justify-between border rounded p-3 mb-2 bg-red-50">
                 <div>
-                  <div className="font-medium text-lg text-black">{s.label} ({s.id}) {s.isAda ? '• ADA' : ''}</div>
+                  <div className="font-medium text-lg text-black">{s.label} ({s.seatId}) {s.isAda ? '• ADA' : ''}</div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => onToggleAda(s.id)} className="admin-btn" style={{backgroundColor:'#991b1b'}}>Toggle ADA</button>
-                  <button onClick={() => onRegisterSeat(s.id)} className="admin-btn" style={{backgroundColor:'#991b1b'}}>Register</button>
-                  <button onClick={() => onRemoveSeat(s.id)} className="admin-btn" style={{backgroundColor:'#991b1b'}}>Remove</button>
+                  <button onClick={() => onToggleAda(s.seatId)} className="admin-btn" style={{backgroundColor:'#991b1b'}}>Toggle ADA</button>
+                  <button onClick={() => onRegisterSeat(s.seatId)} className="admin-btn" style={{backgroundColor:'#991b1b'}}>Register</button>
+                  <button onClick={() => onRemoveSeat(s.seatId)} className="admin-btn" style={{backgroundColor:'#991b1b'}}>Remove</button>
                 </div>
               </div>
             ))}
