@@ -22,3 +22,60 @@ export function seatsForEvent(eventId) {
     { id: "C4", label: "C4", isAda: false },
   ];
 }
+
+// Persistent event helpers
+export function getEvents() {
+  const stored = localStorage.getItem('events');
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return [...EVENTS];
+    }
+  }
+  return [...EVENTS];
+}
+
+export function addEvent(event) {
+  const events = getEvents();
+  events.push(event);
+  localStorage.setItem('events', JSON.stringify(events));
+}
+
+export function removeEvent(eventId) {
+  const events = getEvents().filter(e => e.id !== eventId);
+  localStorage.setItem('events', JSON.stringify(events));
+  // Also remove seats for this event
+  localStorage.removeItem(`seats_${eventId}`);
+}
+
+// Persistent seat helpers
+export function getSeatsForEvent(eventId) {
+  const stored = localStorage.getItem(`seats_${eventId}`);
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return seatsForEvent(eventId);
+    }
+  }
+  return seatsForEvent(eventId);
+}
+
+export function addSeatToEvent(eventId, seat) {
+  const seats = getSeatsForEvent(eventId);
+  seats.push(seat);
+  localStorage.setItem(`seats_${eventId}`, JSON.stringify(seats));
+}
+
+export function removeSeatFromEvent(eventId, seatId) {
+  const seats = getSeatsForEvent(eventId).filter(s => s.id !== seatId);
+  localStorage.setItem(`seats_${eventId}`, JSON.stringify(seats));
+}
+
+export function updateSeatForEvent(eventId, seatId, updates) {
+  const seats = getSeatsForEvent(eventId).map(s =>
+    s.id === seatId ? { ...s, ...updates } : s
+  );
+  localStorage.setItem(`seats_${eventId}`, JSON.stringify(seats));
+}

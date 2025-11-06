@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { EVENTS, seatsForEvent } from "../../data/events";
+import { getEvents, seatsForEvent, getSeatsForEvent, addSeatToEvent, removeSeatFromEvent, updateSeatForEvent } from "../../data/events";
+import { assignSeats } from "../../data/seatAssignments";
+import { useAuth } from "../../contexts/authContext";
 import { getAssignedSeats } from "../../data/seatAssignments";
 
 export default function EventDetail() {
@@ -79,7 +81,6 @@ export default function EventDetail() {
         <div className="text-sm text-gray-500">
           {new Date(ev.startTime).toLocaleString()} • {ev.venueId}
         </div>
-      </div>
 
       {/* Seating legend */}
       <div className="mb-4 flex items-center gap-4 text-sm">
@@ -98,23 +99,25 @@ export default function EventDetail() {
       </div>
 
       {/* Seats grid */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
+        {/* Seats grid with white backdrop */}
+        <div className="mb-10" style={{position:'relative'}}>
+          <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'#fff',borderRadius:'1rem',zIndex:0,boxShadow:'0 2px 12px rgba(0,0,0,0.08)'}}></div>
+          <div className="grid grid-cols-4 gap-4" style={{position:'relative',zIndex:1}}>
         {seats.map((seat) => {
           const isTaken = taken.has(seat.id);
           const isSelected = selected.includes(seat.id);
-
           return (
             <button
               key={seat.id}
               disabled={isTaken}
               onClick={() => toggleSeat(seat.id)}
               className={[
-                "px-3 py-2 rounded-lg border text-sm transition-colors",
+                "px-4 py-3 rounded-lg border text-base transition-colors mb-2",
                 isTaken
                   ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  : "hover:bg-indigo-50",
-                isSelected ? "ring-2 ring-indigo-500 bg-yellow-100" : "",
-                seat.isAda ? "bg-blue-50" : "",
+                  : "hover:bg-red-100",
+                isSelected ? "ring-2 ring-red-700 bg-yellow-100" : "",
+                seat.isAda ? "bg-red-50" : "",
               ].join(" ")}
               aria-label={`Seat ${seat.label}${seat.isAda ? " (ADA)" : ""}${
                 isTaken ? " (Taken)" : ""
@@ -124,10 +127,38 @@ export default function EventDetail() {
             </button>
           );
         })}
+          </div>
+        </div>
       </div>
 
-      {/* Summary / actions */}
-      <div className="flex items-center justify-between">
+      {isAdmin && (
+        <div className="admin-card">
+          <h3 className="text-xl font-bold mb-4">Admin: Manage Seats</h3>
+          <form onSubmit={onAddSeat} className="flex gap-4 mb-6">
+            <input name="id" placeholder="Seat ID (e.g. D1)" className="px-3 py-2 rounded text-black bg-white" />
+            <input name="label" placeholder="Label (optional)" className="px-3 py-2 rounded text-black bg-white" />
+            <label className="flex items-center gap-2"><input type="checkbox" name="isAda" /> ADA</label>
+            <button className="admin-btn">Add seat</button>
+          </form>
+          <div className="space-y-3">
+            {adminSeats.map(s => (
+              <div key={s.id} className="flex items-center justify-between border rounded p-3 mb-2 bg-red-50">
+                <div>
+                  <div className="font-medium text-lg text-black">{s.label} ({s.id}) {s.isAda ? '• ADA' : ''}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => onToggleAda(s.id)} className="admin-btn" style={{backgroundColor:'#991b1b'}}>Toggle ADA</button>
+                  <button onClick={() => onRegisterSeat(s.id)} className="admin-btn" style={{backgroundColor:'#991b1b'}}>Register</button>
+                  <button onClick={() => onRemoveSeat(s.id)} className="admin-btn" style={{backgroundColor:'#991b1b'}}>Remove</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+  {/* Summary / actions */}
+  <div className="flex items-center justify-between">
         <div className="text-sm text-gray-600">
           <div>Price each: ${priceEach.toFixed(2)}</div>
           <div>Seats selected: {selected.length}</div>
@@ -165,6 +196,7 @@ export default function EventDetail() {
             Continue
           </button>
         </div>
+      </div>
       </div>
     </div>
   );
