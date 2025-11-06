@@ -73,6 +73,12 @@ export default function Events() {
                 <button onClick={() => onRemove(ev.id)} className="admin-btn" style={{backgroundColor:'#991b1b'}}>Remove</button>
               )}
             </div>
+            <Link
+              to={`/events/${ev.id}/sections`}
+              className="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700"
+            >
+              View seats
+            </Link>
           </li>
         ))}
       </ul>

@@ -6,53 +6,16 @@ import { useAuth } from "../../contexts/authContext";
 import { getAssignedSeats } from "../../data/seatAssignments";
 
 export default function EventDetail() {
-  const { eventId } = useParams();
+  const { eventId, sectionId } = useParams();
   const navigate = useNavigate();
 
-  const ev = useMemo(() => getEvents().find((e) => e.id === eventId), [eventId]);
-  const seats = useMemo(() => seatsForEvent(eventId), [eventId]);
-  const [adminSeats, setAdminSeats] = React.useState(() => getSeatsForEvent(eventId));
-  const { isAdmin } = useAuth();
-  // admin helpers
-  const refreshSeats = () => setAdminSeats(getSeatsForEvent(eventId));
-
-  const onAddSeat = (e) => {
-    e.preventDefault();
-    const form = e.target;
-    const id = form.id.value.trim();
-    const label = form.label.value.trim() || id;
-    const isAda = !!form.isAda.checked;
-    if (!id) return;
-    addSeatToEvent(eventId, { id, label, isAda });
-    form.reset();
-    refreshSeats();
-  };
-
-  // eslint-disable-next-line no-restricted-globals
-  const onRemoveSeat = (seatId) => {
-    if (!window.confirm('Remove seat ' + seatId + '?')) return;
-    removeSeatFromEvent(eventId, seatId);
-    refreshSeats();
-  };
-
-  // No confirm here, just updating seat
-  const onToggleAda = (seatId) => {
-    const seat = getSeatsForEvent(eventId).find(s => s.id === seatId);
-    if (!seat) return;
-    updateSeatForEvent(eventId, seatId, { isAda: !seat.isAda });
-    refreshSeats();
-  };
-
-  const onRegisterSeat = (seatId) => {
-    const ownerUid = prompt('Enter owner UID to register this seat for:');
-    if (!ownerUid) return;
-    try {
-      assignSeats(eventId, [seatId], ownerUid);
-      alert('Seat registered');
-    } catch (e) {
-      alert('Failed to register seat: ' + e.message);
-    }
-  };
+  const ev = useMemo(() => EVENTS.find((e) => e.id === eventId), [eventId]);
+  const seats = useMemo(() => {
+  const all = seatsForEvent(eventId);
+  if (!sectionId) return all;
+  // Filter seats that start with the chosen section letter, e.g., "A1", "B3"
+  return all.filter(s => s.id.startsWith(sectionId));
+  }, [eventId, sectionId]);
 
   // Seats already taken for this event (Set of seatIds)
   const taken = useMemo(() => getAssignedSeats(eventId), [eventId]);
@@ -99,11 +62,15 @@ export default function EventDetail() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-6 mt-12" style={{position:'relative'}}>
-      <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'#fff',borderRadius:'1.5rem',zIndex:0,boxShadow:'0 4px 24px rgba(0,0,0,0.10)'}}></div>
-      <div style={{position:'relative',zIndex:1}}>
-  {/* Header */}
-  <div className="mb-6">
+    <div className="max-w-3xl mx-auto p-6 mt-12">
+      {sectionId && (
+  <div className="mb-4 text-sm">
+    <span className="mr-2 text-gray-600">Selected Section:</span>
+    <span className="inline-block px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-medium">{sectionId}</span>
+    </div>
+      )}
+      {/* Header */}
+      <div className="mb-6">
         <button
           onClick={() => navigate("/events")}
           className="text-sm text-indigo-600 hover:text-indigo-700 hover:underline"
