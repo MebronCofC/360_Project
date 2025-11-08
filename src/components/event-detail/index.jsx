@@ -1,6 +1,13 @@
 import React, { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getEvents, seatsForEvent, getSeatsForEvent, addSeatToEvent, removeSeatFromEvent, updateSeatForEvent } from "../../data/events";
+import {
+  EVENTS,
+  seatsForEvent,
+  getSeatsForEvent,
+  addSeatToEvent,
+  removeSeatFromEvent,
+  updateSeatForEvent,
+} from "../../data/events";
 import { assignSeats } from "../../data/seatAssignments";
 import { useAuth } from "../../contexts/authContext";
 import { getAssignedSeats } from "../../data/seatAssignments";
@@ -196,7 +203,6 @@ export default function EventDetail() {
             Continue
           </button>
         </div>
-      </div>
       </div>
     </div>
   );
