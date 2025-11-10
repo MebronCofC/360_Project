@@ -3,7 +3,8 @@ import {
   checkSeatsAvailability, 
   assignSeatsInDB, 
   releaseSeatInDB,
-  getTicketsForUserFromDB
+  getTicketsForUserFromDB,
+  getTicketsForEventFromDB
 } from "../firebase/firestore";
 
 /**
@@ -11,9 +12,11 @@ import {
  */
 export async function getAssignedSeats(eventId) {
   try {
-    // This is a placeholder - in real usage, we'd query all tickets for this event
-    // For now, we'll return an empty set and rely on checkSeatsAvailability
-    return new Set();
+    // Get all tickets for this event from Firestore
+    const tickets = await getTicketsForEventFromDB(eventId);
+    // Extract the seatIds and return as a Set
+    const seatIds = tickets.map(ticket => ticket.seatId);
+    return new Set(seatIds);
   } catch (error) {
     console.error("Error getting assigned seats:", error);
     return new Set();
@@ -31,13 +34,12 @@ export async function areAvailable(eventId, seatIds = []) {
 /** 
  * Assign seats to an owner; throws if any already taken 
  */
-export async function assignSeats(eventId, seatIds = [], ownerUid, ticketIdBySeat = {}) {
+export async function assignSeats(eventId, seatIds = [], ownerUid, ticketIdBySeat = {}, eventTitle = "Event", startTime = null) {
   try {
-    // Get event details for the tickets
-    const eventTitle = "Event"; // You can pass this in or fetch from DB
-    const startTime = new Date().toISOString(); // Or fetch from event
+    // Use provided event details or defaults
+    const finalStartTime = startTime || new Date().toISOString();
     
-    const orderId = await assignSeatsInDB(eventId, seatIds, ownerUid, eventTitle, startTime);
+    const orderId = await assignSeatsInDB(eventId, seatIds, ownerUid, eventTitle, finalStartTime);
     
     return seatIds.map(seatId => ({
       seatId,

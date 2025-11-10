@@ -4,6 +4,7 @@ import {
   getDocs, 
   getDoc, 
   addDoc, 
+  setDoc,
   updateDoc, 
   deleteDoc, 
   query, 
@@ -46,11 +47,22 @@ export async function getEventByIdFromDB(eventId) {
 export async function addEventToDB(eventData) {
   try {
     const eventsCol = collection(db, "events");
-    const docRef = await addDoc(eventsCol, {
+    // Generate a slug from the title for use as the document ID
+    const slug = eventData.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    
+    // Add a timestamp to ensure uniqueness
+    const uniqueId = `${slug}-${Date.now().toString(36)}`;
+    
+    const docRef = doc(eventsCol, uniqueId);
+    await setDoc(docRef, {
       ...eventData,
+      eventId: uniqueId,
       createdAt: serverTimestamp()
     });
-    return docRef.id;
+    return uniqueId;
   } catch (error) {
     console.error("Error adding event:", error);
     throw error;
@@ -169,6 +181,19 @@ export async function getTicketsForUserFromDB(userId) {
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
     console.error("Error getting tickets:", error);
+    return [];
+  }
+}
+
+// Get all tickets for an event
+export async function getTicketsForEventFromDB(eventId) {
+  try {
+    const ticketsCol = collection(db, "tickets");
+    const q = query(ticketsCol, where("eventId", "==", eventId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Error getting tickets for event:", error);
     return [];
   }
 }

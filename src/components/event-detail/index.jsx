@@ -64,13 +64,13 @@ export default function EventDetail() {
   const onAddSeat = async (e) => {
     e.preventDefault();
     const form = e.target;
-    const id = form.id.value.trim();
-    const label = form.label.value.trim() || id;
+    const seatId = form.seatId.value.trim();
+    const label = form.label.value.trim() || seatId;
     const isAda = !!form.isAda.checked;
-    if (!id) return;
+    if (!seatId) return;
     
     try {
-      await addSeatToEvent(eventId, { id, label, isAda });
+      await addSeatToEvent(eventId, { seatId, label, isAda });
       form.reset();
       await refreshSeats();
     } catch (error) {
@@ -108,7 +108,7 @@ export default function EventDetail() {
     const ownerUid = prompt('Enter owner UID to register this seat for:');
     if (!ownerUid) return;
     try {
-      await assignSeats(eventId, [seatId], ownerUid);
+      await assignSeats(eventId, [seatId], ownerUid, {}, ev.title, ev.startTime);
       alert('Seat registered');
       const takenSeats = await getAssignedSeats(eventId);
       setTaken(takenSeats);
@@ -172,7 +172,10 @@ export default function EventDetail() {
           ← Back to Events
         </button>
         <h1 className="text-2xl font-semibold mt-2">{ev.title}</h1>
-        <div className="text-sm text-gray-500">
+        {ev.description && (
+          <div className="text-sm text-gray-600 mt-2 italic">{ev.description}</div>
+        )}
+        <div className="text-sm text-gray-500 mt-2">
           {new Date(ev.startTime).toLocaleString()} • {ev.venueId}
         </div>
         
@@ -192,10 +195,10 @@ export default function EventDetail() {
           <span className="w-3 h-3 inline-block rounded border bg-gray-200" /> Taken
         </span>
         <span className="inline-flex items-center gap-2">
-          <span className="w-3 h-3 inline-block rounded border bg-yellow-100" /> Selected
+          <span className="w-3 h-3 inline-block rounded border ring-2 ring-red-700 bg-yellow-100" /> Selected
         </span>
         <span className="inline-flex items-center gap-2">
-          <span className="w-3 h-3 inline-block rounded border bg-blue-50" /> ADA
+          <span className="w-3 h-3 inline-block rounded border bg-red-50" /> ADA
         </span>
       </div>
 
@@ -236,7 +239,7 @@ export default function EventDetail() {
         <div className="admin-card">
           <h3 className="text-xl font-bold mb-4">Admin: Manage Seats</h3>
           <form onSubmit={onAddSeat} className="flex gap-4 mb-6">
-            <input name="id" placeholder="Seat ID (e.g. D1)" className="px-3 py-2 rounded text-black bg-white" />
+            <input name="seatId" placeholder="Seat ID (e.g. D1)" className="px-3 py-2 rounded text-black bg-white" />
             <input name="label" placeholder="Label (optional)" className="px-3 py-2 rounded text-black bg-white" />
             <label className="flex items-center gap-2"><input type="checkbox" name="isAda" /> ADA</label>
             <button className="admin-btn">Add seat</button>

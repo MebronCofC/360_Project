@@ -2,6 +2,7 @@
 import { 
   getEventsFromDB, 
   addEventToDB, 
+  updateEventInDB,
   deleteEventFromDB,
   getSeatsForEventFromDB,
   addSeatToEventInDB,
@@ -47,6 +48,10 @@ export async function addEvent(event) {
 
 export async function removeEvent(eventId) {
   await deleteEventFromDB(eventId);
+}
+
+export async function updateEvent(eventId, updates) {
+  await updateEventInDB(eventId, updates);
 }
 
 // ==================== SEATS ====================

@@ -61,7 +61,7 @@ export default function Checkout() {
 
   // 3) assign seats to this user
   try {
-    await assignSeats(pending.eventId, pending.seats, ownerUid, ticketIdBySeat);
+    await assignSeats(pending.eventId, pending.seats, ownerUid, ticketIdBySeat, pending.eventTitle, pending.startTime);
     localStorage.removeItem("pendingOrder");
     setOrderId(newOrderId);
     setSaved(true);
