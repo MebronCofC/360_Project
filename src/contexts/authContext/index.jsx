@@ -39,11 +39,13 @@ export function AuthProvider({ children }) {
       // setIsGoogleUser(isGoogle);
 
       setUserLoggedIn(true);
-      // admin detection
+      // admin detection (normalize emails to avoid case/whitespace mismatches)
       const adminEmails = [
         'mebneon@gmail.com',
-      ];
-      const isAdminUser = user.email && adminEmails.includes(user.email.toLowerCase());
+        'johnsonns@g.cofc.edu',
+      ].map(e => e.trim().toLowerCase());
+      const userEmail = (user.email || '').trim().toLowerCase();
+      const isAdminUser = userEmail && adminEmails.includes(userEmail);
       setIsAdmin(!!isAdminUser);
     } else {
       setCurrentUser(null);
