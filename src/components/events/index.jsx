@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+// import { Link } from "react-router-dom";
 import { getEvents, addEvent, removeEvent, updateEvent } from "../../data/events";
 import { useAuth } from "../../contexts/authContext";
 import InteractiveSeatingChart from "../seating-chart";
@@ -135,12 +135,7 @@ export default function Events() {
                 >
                   {showChartForEvent === ev.id ? 'Hide Chart' : 'View Chart'}
                 </button>
-                <Link
-                  to={`/events/${ev.id}`}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700"
-                >
-                  View seats
-                </Link>
+                {/* Removed redundant "View seats" button; use chart to select a section */}
                 {isAdmin && (
                   <>
                     <button onClick={() => onEdit(ev)} className="admin-btn" style={{backgroundColor:'#7c3aed'}}>Edit</button>
