@@ -237,7 +237,7 @@ export default function EventDetail() {
                               </span>
                             </div>
 
-                            {/* Seats grid (grouped by rows for section) */}
+                            {/* Seats grid (bleacher-style: Row A at bottom) */}
                             <div className="mb-10" style={{ position: "relative" }}>
                               <div
                                 style={{
@@ -252,7 +252,7 @@ export default function EventDetail() {
                                   boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
                                 }}
                               />
-                              <div className="space-y-4" style={{ position: "relative", zIndex: 1 }}>
+                              <div className="flex flex-col-reverse gap-2 p-4" style={{ position: "relative", zIndex: 1 }}>
                                 {Object.entries(
                                   seats.reduce((acc, seat) => {
                                     // seat.label like A1, B12
@@ -261,10 +261,13 @@ export default function EventDetail() {
                                     acc[row].push(seat);
                                     return acc;
                                   }, {})
-                                ).map(([row, rowSeats]) => (
-                                  <div key={row}>
-                                    <div className="text-xs font-semibold text-gray-500 mb-1">Row {row}</div>
-                                    <div className="grid grid-cols-9 sm:grid-cols-12 md:grid-cols-18 gap-2">
+                                ).sort(([rowA],[rowB]) => rowA.localeCompare(rowB))
+                                .map(([row, rowSeats]) => (
+                                  <div key={row} className="flex items-center gap-2">
+                                    <div className="text-xs font-bold text-gray-700 w-12 text-right flex-shrink-0">
+                                      Row {row}
+                                    </div>
+                                    <div className="flex flex-wrap gap-1 justify-center flex-1">
                                       {rowSeats.sort((a,b)=>{
                                         const na = Number(a.label.replace(/^[A-Z]+/,''));
                                         const nb = Number(b.label.replace(/^[A-Z]+/,''));
@@ -278,18 +281,19 @@ export default function EventDetail() {
                                             disabled={isTaken}
                                             onClick={() => toggleSeat(seat.seatId)}
                                             className={[
-                                              "px-2 py-2 rounded-lg border text-xs transition-colors",
+                                              "px-3 py-2 rounded border text-xs font-medium transition-all flex-shrink-0",
                                               isTaken
                                                 ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                                                : "hover:bg-red-100",
-                                              isSelected ? "ring-2 ring-red-700 bg-yellow-100" : "",
+                                                : "bg-white hover:bg-red-100",
+                                              isSelected ? "ring-2 ring-red-700 bg-yellow-100 font-bold" : "",
                                               seat.isAda ? "bg-red-50" : "",
                                             ].join(" ")}
+                                            style={{ minWidth: '2.5rem' }}
                                             aria-label={`Seat ${seat.label}${seat.isAda ? " (ADA)" : ""}${
                                               isTaken ? " (Taken)" : ""
                                             }`}
                                           >
-                                            {seat.label}
+                                            {seat.label.replace(/^[A-Z]+/,'')}
                                           </button>
                                         );
                                       })}
