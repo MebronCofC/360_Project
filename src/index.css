@@ -1,11 +1,28 @@
 body {
-	background: #8c0101 !important;
+	background-color: #8c0101 !important;
+}
+
+body::before {
+	content: "";
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background-color: #000000;
+	background-image: url(../public/college_of_charleston_cougars_logo_secondary_20134070.png);
+	background-repeat: repeat;
+	background-size: 200px auto;
+	opacity: 0.2;
+	filter: contrast(1.7) brightness(10.2s);
+	z-index: -1;
+	pointer-events: none;
 }
 
 /* Red themed card for admin UI */
 .admin-card {
-	background-color: #ded4d4; /* red-700 */
-	color: #7b7976;
+	background-color: #ffffff; /* bright red - change this to your desired color */
+	color: #ffffff; /* white text for better contrast */
 	border-radius: 0.75rem;
 	box-shadow: 0 6px 18px rgba(185,28,28,0.12);
 	padding: 2rem;
