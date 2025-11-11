@@ -252,7 +252,7 @@ export default function EventDetail() {
                                   boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
                                 }}
                               />
-                              <div className="flex flex-col-reverse gap-2 p-4" style={{ position: "relative", zIndex: 1 }}>
+                              <div className="flex flex-col-reverse gap-2 p-4 overflow-x-auto" style={{ position: "relative", zIndex: 1 }}>
                                 {Object.entries(
                                   seats.reduce((acc, seat) => {
                                     // seat.label like A1, B12
@@ -263,11 +263,11 @@ export default function EventDetail() {
                                   }, {})
                                 ).sort(([rowA],[rowB]) => rowA.localeCompare(rowB))
                                 .map(([row, rowSeats]) => (
-                                  <div key={row} className="flex items-center gap-2">
+                                  <div key={row} className="flex items-center gap-2 min-w-max">
                                     <div className="text-xs font-bold text-gray-700 w-12 text-right flex-shrink-0">
                                       Row {row}
                                     </div>
-                                    <div className="flex flex-wrap gap-1 justify-center flex-1">
+                                    <div className="flex gap-1 flex-nowrap">
                                       {rowSeats.sort((a,b)=>{
                                         const na = Number(a.label.replace(/^[A-Z]+/,''));
                                         const nb = Number(b.label.replace(/^[A-Z]+/,''));
