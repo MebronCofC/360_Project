@@ -220,7 +220,7 @@ export async function invalidateTicketsForEventInDB(eventId) {
     snapshot.docs.forEach(d => {
       batch.update(d.ref, {
         status: "Invalid",
-        invalidReason: "Event deleted",
+        invalidReason: "The Event has been cancelled",
         updatedAt: serverTimestamp()
       });
     });

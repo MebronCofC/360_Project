@@ -155,7 +155,14 @@ export default function MyTickets() {
               </div>
               <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-600">Status</div>
-                <div className="px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">{t.status || 'Issued'}</div>
+                {(() => {
+                  const isInvalid = t.status === 'Invalid' || !!t.invalidReason;
+                  const label = isInvalid ? `Invalid - ${t.invalidReason || 'The Event has been cancelled'}` : (t.status || 'Issued');
+                  const classes = isInvalid ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+                  return (
+                    <div className={`px-3 py-1 ${classes} text-xs font-semibold rounded-full`}>{label}</div>
+                  );
+                })()}
               </div>
             </div>
             
