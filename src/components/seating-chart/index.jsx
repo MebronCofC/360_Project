@@ -12,54 +12,58 @@ export default function InteractiveSeatingChart({ eventId }) {
   // Define all sections with their approximate positions (percentages)
   const sections = [
     // Top row
-    { number: 210, left: '20%', top: '3%', width: '8%', height: '9%' },
-    { number: 211, left: '30%', top: '3%', width: '12%', height: '9%' },
-    { label: "SUITE", left: '44%', top: '3%', width: '12%', height: '5%', special: true },
-    { number: 213, left: '58%', top: '3%', width: '12%', height: '9%' },
-    { number: 214, left: '72%', top: '3%', width: '8%', height: '9%' },
+    { number: 210, left: '17%', top: '2%', width: '10%', height: '9%' },
+    { number: 211, left: '29%', top: '2%', width: '13%', height: '9%' },
+    { label: "SUITE", left: '41%', top: '3%', width: '18%', height: '5%', special: true },
+    { number: 213, left: '58%', top: '2%', width: '13%', height: '9%' },
+    { number: 214, left: '72%', top: '2%', width: '12%', height: '9%' },
     
     // Left side
-    { number: 209, left: '2%', top: '27%', width: '6%', height: '9%' },
-    { number: 208, left: '2%', top: '51%', width: '6%', height: '9%' },
-    { number: 207, left: '2%', top: '72%', width: '6%', height: '9%' },
+    { number: 209, left: '0%', top: '17%', width: '7%', height: '20%' },
+    { number: 208, left: '0%', top: '40%', width: '7%', height: '20%' },
+    { number: 207, left: '0%', top: '63%', width: '7%', height: '20%' },
     
     // Upper left sections
-    { number: 110, left: '10%', top: '14%', width: '14%', height: '15%' },
+    { number: 110, left: '13%', top: '14%', width: '14%', height: '15%' },
     { number: 109, left: '10%', top: '33%', width: '14%', height: '15%' },
     { number: 107, left: '10%', top: '52%', width: '14%', height: '15%' },
-    { number: 106, left: '10%', top: '71%', width: '14%', height: '15%' },
+    { number: 106, left: '14%', top: '71%', width: '14%', height: '15%' },
     
     // Upper center sections
-    { number: 111, left: '26%', top: '14%', width: '10%', height: '15%' },
-    { number: 112, left: '38%', top: '14%', width: '10%', height: '15%' },
-    { number: 113, left: '50%', top: '14%', width: '10%', height: '15%' },
-    { number: 114, left: '62%', top: '14%', width: '12%', height: '15%' },
+    { number: 111, left: '30%', top: '14%', width: '13%', height: '15%' },
+    { number: 112, left: '44%', top: '14%', width: '13%', height: '15%' },
+    { number: 113, left: '58%', top: '14%', width: '13%', height: '15%' },
+    { number: 114, left: '72%', top: '14%', width: '13%', height: '15%' },
     
     // Right side sections
-    { number: 115, left: '76%', top: '14%', width: '14%', height: '15%' },
-    { number: 101, left: '76%', top: '43%', width: '14%', height: '15%' },
+    { number: 115, left: '73%', top: '34%', width: '18%', height: '15%' },
+    { number: 101, left: '73%', top: '52%', width: '18%', height: '15%' },
     
     // Right edge
-    { number: 215, left: '92%', top: '27%', width: '6%', height: '9%' },
-    { number: 216, left: '92%', top: '51%', width: '6%', height: '9%' },
-    { number: 201, left: '92%', top: '72%', width: '6%', height: '9%' },
+    { number: 215, left: '93%', top: '18%', width: '7%', height: '20%' },
+    { number: 216, left: '93%', top: '40%', width: '7%', height: '20%' },
+    { number: 201, left: '93%', top: '62%', width: '7%', height: '20%' },
     
     // Bottom center sections
-    { number: 105, left: '26%', top: '71%', width: '10%', height: '15%' },
-    { number: 104, left: '38%', top: '71%', width: '10%', height: '15%' },
-    { number: 103, left: '50%', top: '71%', width: '10%', height: '15%' },
-    { number: 102, left: '62%', top: '71%', width: '12%', height: '15%' },
-    
+    { number: 105, left: '30%', top: '70%', width: '12%', height: '20%' },
+    { number: 104, left: '44%', top: '70%', width: '12%', height: '20%' },
+    { number: 103, left: '58%', top: '70%', width: '12%', height: '20%' },
+    { number: 102, left: '72%', top: '70%', width: '12%', height: '20%' },
+
     // Bottom row
-    { number: 206, left: '20%', top: '89%', width: '8%', height: '9%' },
-    { number: 205, left: '30%', top: '89%', width: '12%', height: '9%' },
-    { number: 204, left: '44%', top: '89%', width: '12%', height: '9%' },
-    { number: 203, left: '58%', top: '89%', width: '12%', height: '9%' },
-    { number: 202, left: '72%', top: '89%', width: '8%', height: '9%' },
+    { number: 206, left: '15%', top: '90%', width: '12%', height: '10%' },
+    { number: 205, left: '29%', top: '90%', width: '13%', height: '9%' },
+    { number: 204, left: '43%', top: '90%', width: '14%', height: '9%' },
+    { number: 203, left: '58%', top: '90%', width: '13%', height: '9%' },
+    { number: 202, left: '72%', top: '90%', width: '15%', height: '9%' },
   ];
 
   return (
     <div className="relative w-full max-w-4xl mx-auto">
+      {/* Instruction text above chart */}
+      <div className="text-center mb-4 text-sm text-gray-700 font-semibold">
+        💡 Click any purple section number to view available seats 💡
+      </div>
       {/* Seating Chart Image */}
       <div className="relative">
         <img 
@@ -89,10 +93,7 @@ export default function InteractiveSeatingChart({ eventId }) {
         ))}
       </div>
 
-      {/* Hover Instructions */}
-      <div className="text-center mt-4 text-sm text-gray-600">
-        💡 Click any purple section number to view available seats
-      </div>
+      
     </div>
   );
 }
