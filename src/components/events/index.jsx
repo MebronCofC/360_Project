@@ -117,18 +117,20 @@ export default function Events() {
       <ul className="space-y-6">
         {events.map(ev => (
           <li key={ev.id} className="border rounded-xl p-6 app-card mb-6" style={{background:'#fff1c9'}}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <div className="font-medium text-lg mb-2">{ev.title}</div>
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div className="flex-1 min-w-0 pr-2">
+                <div className="font-medium text-lg mb-2 truncate">{ev.title}</div>
                 {ev.description && (
-                  <div className="text-sm text-gray-600 mb-2 italic">{ev.description}</div>
+                  <div className="text-sm text-gray-600 mb-2 italic leading-5 max-h-12 overflow-hidden">
+                    {ev.description}
+                  </div>
                 )}
                 <div className="text-sm text-gray-500 mb-2">
                   {new Date(ev.startTime).toLocaleString()} • {ev.venueId}
                 </div>
                 <div className="text-sm text-gray-700">Price: ${ev.basePrice}</div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-shrink-0">
                 <button
                   onClick={() => setShowChartForEvent(showChartForEvent === ev.id ? null : ev.id)}
                   className="px-4 py-2 rounded-xl bg-purple-600 text-white hover:bg-purple-700"
