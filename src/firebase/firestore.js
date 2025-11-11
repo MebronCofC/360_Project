@@ -87,6 +87,8 @@ export async function updateEventInDB(eventId, updates) {
 export async function deleteEventFromDB(eventId) {
   try {
     const eventDoc = doc(db, "events", eventId);
+    // Invalidate all tickets for this event
+    await invalidateTicketsForEventInDB(eventId);
     await deleteDoc(eventDoc);
     // Also delete all seats for this event
     await deleteSeatsForEvent(eventId);
@@ -204,6 +206,27 @@ async function deleteSeatsForEvent(eventId) {
     await batch.commit();
   } catch (error) {
     console.error("Error deleting seats for event:", error);
+  }
+}
+
+// Invalidate tickets for a deleted event
+export async function invalidateTicketsForEventInDB(eventId) {
+  try {
+    const ticketsCol = collection(db, "tickets");
+    const q = query(ticketsCol, where("eventId", "==", eventId));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return;
+    const batch = writeBatch(db);
+    snapshot.docs.forEach(d => {
+      batch.update(d.ref, {
+        status: "Invalid",
+        invalidReason: "Event deleted",
+        updatedAt: serverTimestamp()
+      });
+    });
+    await batch.commit();
+  } catch (error) {
+    console.error("Error invalidating tickets for event:", error);
   }
 }
 

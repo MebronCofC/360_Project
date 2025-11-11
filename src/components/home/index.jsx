@@ -34,7 +34,13 @@ const Home = () => {
                 
                 setCurrentEvents(current)
                 setUpcomingEvents(upcoming.slice(0, 6)) // Show max 6 upcoming
-                setPastEvents(past.sort((a,b) => new Date(b.endTime || b.startTime) - new Date(a.endTime || a.startTime)).slice(0,6))
+                // Fallback: include any ended items still in active collection
+                const ended = allEvents.filter(ev => ev.endTime && new Date(ev.endTime) < now)
+                const combined = [...past, ...ended].reduce((acc, ev) => {
+                    acc.set(ev.id || ev.eventId, ev)
+                    return acc
+                }, new Map())
+                setPastEvents(Array.from(combined.values()).sort((a,b) => new Date(b.endTime || b.startTime) - new Date(a.endTime || a.startTime)).slice(0,6))
             } catch (error) {
                 console.error('Error loading events:', error)
             } finally {
