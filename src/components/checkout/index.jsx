@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { areAvailable, assignSeats } from "../../data/seatAssignments";
-import { useAuth } from "../../contexts/authContext"; // to get currentUser?.uid
+import { useAuth } from "../../contexts/authContext";
+import { getTicketsForUserFromDB } from "../../firebase/firestore";
 
 
 // simple base64 QR fallback (no deps) — encodes a text payload and displays it
@@ -19,6 +20,7 @@ export default function Checkout() {
   const ownerUid = currentUser?.uid || null;
   const navigate = useNavigate();
   const [saved, setSaved] = useState(false);
+  const [purchasedTickets, setPurchasedTickets] = useState([]);
 
   const pending = useMemo(() => {
     try { return JSON.parse(localStorage.getItem("pendingOrder") || "null"); }
@@ -36,14 +38,14 @@ export default function Checkout() {
 
   if (!pending) return null;
 
-  const confirm = () => {
+  const confirm = async () => {
      if (!currentUser?.uid) {
        alert("Please log in before purchasing tickets.");
        navigate("/login");
        return;
      }
   // 1) check for conflicts (already owned seats)
-  const conflicts = areAvailable(pending.eventId, pending.seats);
+  const conflicts = await areAvailable(pending.eventId, pending.seats);
     
   if (conflicts.length > 0) {
     alert(`Sorry, these seats are currently owned: ${conflicts.join(", ")}.\nPlease go back and pick different seats.`);
@@ -59,31 +61,20 @@ export default function Checkout() {
 
   // 3) assign seats to this user
   try {
-    assignSeats(pending.eventId, pending.seats, ownerUid, ticketIdBySeat);
+    await assignSeats(pending.eventId, pending.seats, ownerUid, ticketIdBySeat, pending.eventTitle, pending.startTime);
+    localStorage.removeItem("pendingOrder");
+    setOrderId(newOrderId);
+    setSaved(true);
+    
+    // Load the newly created tickets from Firestore
+    const tickets = await getTicketsForUserFromDB(ownerUid);
+    const newTickets = tickets.filter(t => t.orderId === newOrderId);
+    setPurchasedTickets(newTickets);
   } catch (e) {
+    console.error('Error assigning seats:', e);
     alert("One or more seats just got taken. Please reselect.");
     return;
   }
-
-  // 4) create tickets for this user (local demo)
-  const existing = JSON.parse(localStorage.getItem("tickets") || "[]");
-  const newTickets = pending.seats.map(seatId => ({
-    id: ticketIdBySeat[seatId],
-    orderId: newOrderId,
-    ownerUid,
-    eventId: pending.eventId,
-    eventTitle: pending.eventTitle,
-    startTime: pending.startTime,
-    seatId,
-    qrPayload: `ticket:${newOrderId}:${seatId}:${pending.eventId}`,
-    status: "Issued",
-    createdAt: Date.now()
-  }));
-  const all = [...existing, ...newTickets];
-  localStorage.setItem("tickets", JSON.stringify(all));
-  localStorage.removeItem("pendingOrder");
-  setOrderId(newOrderId);
-  setSaved(true);
 };
 
 
@@ -108,9 +99,7 @@ export default function Checkout() {
           <div className="text-emerald-700 font-medium">Purchase complete — tickets issued.</div>
           <div className="text-sm text-gray-600">Example QR payload (one per seat):</div>
           <div className="grid grid-cols-2 gap-3">
-            {JSON.parse(localStorage.getItem("tickets") || "[]")
-              .filter(t => t.orderId === orderId)
-              .map(t => (
+            {purchasedTickets.map(t => (
                 <div key={t.id} className="border rounded-xl p-3">
                   <div className="text-sm font-medium mb-2">{t.eventTitle} — {t.seatId}</div>
                   <FakeQR value={t.qrPayload} />

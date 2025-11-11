@@ -1,329 +1,336 @@
-import React, { useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import {
-  EVENTS,
-  seatsForEvent,
-  getSeatsForEvent,
-  addSeatToEvent,
-  removeSeatFromEvent,
-  updateSeatForEvent,
-} from "../../data/events";
-import { getAssignedSeats, assignSeats } from "../../data/seatAssignments";
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { getEvents, seatsForEvent, getSeatsForEvent, addSeatToEvent, removeSeatFromEvent, updateSeatForEvent } from "../../data/events";
+import { assignSeats, getAssignedSeats } from "../../data/seatAssignments";
 import { useAuth } from "../../contexts/authContext";
 
 export default function EventDetail() {
-  const { eventId, sectionId } = useParams();
+  const { eventId } = useParams();
   const navigate = useNavigate();
-  const { isAdmin, currentUser } = useAuth() || {};
+  const { isAdmin } = useAuth();
+  const [searchParams] = useSearchParams();
+  const sectionNumber = searchParams.get("section");
 
-  // Find event
-  const event = useMemo(
-    () => EVENTS.find((e) => e.id === eventId),
-    [eventId]
-  );
-
-  // Load seats from storage (if admin changed them) or base definition
-  const allSeats = useMemo(() => {
-    const stored = getSeatsForEvent
-      ? getSeatsForEvent(eventId)
-      : null;
-    const base = seatsForEvent(eventId);
-    return stored && stored.length ? stored : base;
-  }, [eventId]);
-
-  // Optional: filter by section (A/B/C) when coming from section-select
-  const seats = useMemo(() => {
-    if (!sectionId) return allSeats;
-    return allSeats.filter((s) => s.id.startsWith(sectionId));
-  }, [allSeats, sectionId]);
-
-  // Taken seats for this event
-  const takenSet = useMemo(() => {
-    const taken = getAssignedSeats(eventId) || {};
-    // getAssignedSeats returns a map or set; normalize to Set of ids
-    if (taken instanceof Set) return taken;
-    if (Array.isArray(taken)) return new Set(taken);
-    return new Set(Object.keys(taken));
-  }, [eventId]);
-
+  const [loading, setLoading] = useState(true);
+  const [ev, setEv] = useState(null);
+  const [seats, setSeats] = useState([]);
+  const [adminSeats, setAdminSeats] = useState([]);
+  const [taken, setTaken] = useState(new Set());
   const [selected, setSelected] = useState([]);
 
-  if (!event) {
-    return (
-      <div className="max-w-5xl mx-auto p-6">
-        <p className="text-gray-600">Event not found.</p>
-        <button
-          onClick={() => navigate("/events")}
-          className="mt-4 px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300"
-        >
-          Back to Events
-        </button>
-      </div>
-    );
-  }
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const events = await getEvents();
+        const event = events.find((e) => e.id === eventId);
+        setEv(event || null);
+        if (event) {
+          const eventSeats = await seatsForEvent(eventId);
+          setSeats(eventSeats);
+          if (isAdmin) {
+            const allSeats = await getSeatsForEvent(eventId);
+            setAdminSeats(allSeats);
+          }
+          const takenSeats = await getAssignedSeats(eventId);
+          setTaken(takenSeats || new Set());
+        }
+      } catch (err) {
+        console.error("Error loading event detail", err);
+        alert("Failed to load event data");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, [eventId, isAdmin]);
 
-  const priceEach = event.basePrice || 20;
-  const subtotal = selected.length * priceEach;
+                      const refreshSeats = async () => {
+                        try {
+                          const allSeats = await getSeatsForEvent(eventId);
+                          setAdminSeats(allSeats);
+                          const eventSeats = await seatsForEvent(eventId);
+                          setSeats(eventSeats);
+                        } catch (err) {
+                          console.error("Error refreshing seats", err);
+                        }
+                      };
 
-  const toggleSeat = (seatId) => {
-    if (takenSet.has(seatId)) return; // can't pick taken seats
-    setSelected((prev) =>
-      prev.includes(seatId)
-        ? prev.filter((id) => id !== seatId)
-        : [...prev, seatId]
-    );
-  };
+                      const onAddSeat = async (e) => {
+                        e.preventDefault();
+                        const form = e.target;
+                        const seatId = form.seatId.value.trim();
+                        const label = form.label.value.trim() || seatId;
+                        const isAda = !!form.isAda.checked;
+                        if (!seatId) return;
+                        try {
+                          await addSeatToEvent(eventId, { seatId, label, isAda });
+                          form.reset();
+                          await refreshSeats();
+                        } catch (err) {
+                          console.error("Add seat failed", err);
+                          alert("Failed to add seat");
+                        }
+                      };
 
-  const clearSelected = () => setSelected([]);
+                      // eslint-disable-next-line no-restricted-globals
+                      const onRemoveSeat = async (seatId) => {
+                        if (!window.confirm("Remove seat " + seatId + "?")) return;
+                        try {
+                          await removeSeatFromEvent(eventId, seatId);
+                          await refreshSeats();
+                        } catch (err) {
+                          console.error("Remove seat failed", err);
+                          alert("Failed to remove seat");
+                        }
+                      };
 
-  const proceed = () => {
-    if (!selected.length) return;
+                      const onToggleAda = async (seatId) => {
+                        try {
+                          const allSeats = await getSeatsForEvent(eventId);
+                          const seat = allSeats.find((s) => s.seatId === seatId);
+                          if (!seat) return;
+                          await updateSeatForEvent(eventId, seatId, { isAda: !seat.isAda });
+                          await refreshSeats();
+                        } catch (err) {
+                          console.error("Toggle ADA failed", err);
+                          alert("Failed to update seat");
+                        }
+                      };
 
-    // For the prototype, assign immediately and send user to checkout / my-tickets.
-    const ownerUid = currentUser?.uid || "demo-user";
+                      const onRegisterSeat = async (seatId) => {
+                        const ownerUid = prompt("Enter owner UID to register this seat for:");
+                        if (!ownerUid) return;
+                        try {
+                          await assignSeats(eventId, [seatId], ownerUid, {}, ev.title, ev.startTime);
+                          alert("Seat registered");
+                          const takenSeats = await getAssignedSeats(eventId);
+                          setTaken(takenSeats || new Set());
+                        } catch (err) {
+                          alert("Failed to register seat: " + err.message);
+                        }
+                      };
 
-    assignSeats(eventId, selected, ownerUid);
+                      if (loading) return <div className="p-6 mt-12">Loading event...</div>;
+                      if (!ev) return <div className="p-6 mt-12">Event not found.</div>;
 
-    // In a full flow you might navigate to /checkout with state.
-    // For now, go to My Tickets so they can see what they "bought".
-    navigate("/my-tickets");
-  };
+                      const toggleSeat = (seatId) => {
+                        if (taken.has(seatId)) return; // can't select taken seats
+                        setSelected((prev) =>
+                          prev.includes(seatId) ? prev.filter((id) => id !== seatId) : [...prev, seatId]
+                        );
+                      };
 
-  // ----- Admin helpers -----
-  const [adminForm, setAdminForm] = useState({ id: "", label: "", isAda: false });
+                      const priceEach = Number(ev.basePrice) || 0;
+                      const subtotal = selected.length * priceEach;
 
-  const onAdminChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setAdminForm((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-  };
+                      const proceed = () => {
+                        if (!selected.length) return;
+                        const pending = {
+                          eventId: ev.id,
+                          eventTitle: ev.title,
+                          startTime: ev.startTime,
+                          seats: selected,
+                          priceEach,
+                          subtotal,
+                          createdAt: Date.now(),
+                        };
+                        try {
+                          localStorage.setItem("pendingOrder", JSON.stringify(pending));
+                        } catch {}
+                        navigate("/checkout");
+                      };
 
-  const onAddSeat = (e) => {
-    e.preventDefault();
-    if (!adminForm.id) return;
-    addSeatToEvent(eventId, {
-      id: adminForm.id,
-      label: adminForm.label || adminForm.id,
-      isAda: !!adminForm.isAda,
-    });
-    setAdminForm({ id: "", label: "", isAda: false });
-    window.location.reload(); // simple refresh for prototype
-  };
+                      return (
+                        <div className="max-w-3xl mx-auto p-6 mt-12" style={{ position: "relative" }}>
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              background: "#fff",
+                              borderRadius: "1.5rem",
+                              zIndex: 0,
+                              boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
+                            }}
+                          />
+                          <div style={{ position: "relative", zIndex: 1 }}>
+                            {/* Header */}
+                            <div className="mb-6">
+                              <button
+                                onClick={() => navigate("/events")}
+                                className="text-sm text-indigo-600 hover:text-indigo-700 hover:underline"
+                              >
+                                ← Back to Events
+                              </button>
+                              <h1 className="text-2xl font-semibold mt-2">{ev.title}</h1>
+                              {ev.description && (
+                                <div className="text-sm text-gray-600 mt-2 italic">{ev.description}</div>
+                              )}
+                              <div className="text-sm text-gray-500 mt-2">
+                                {new Date(ev.startTime).toLocaleString()} {ev.venueId && `• ${ev.venueId}`}
+                              </div>
+                              {sectionNumber && (
+                                <div className="mt-3 inline-block px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold">
+                                  Seat Selection for Section {sectionNumber}
+                                </div>
+                              )}
+                            </div>
 
-  const onRemoveSeat = (seatId) => {
-    removeSeatFromEvent(eventId, seatId);
-    window.location.reload();
-  };
+                            {/* Legend */}
+                            <div className="mb-4 flex items-center gap-4 text-sm">
+                              <span className="inline-flex items-center gap-2">
+                                <span className="w-3 h-3 inline-block rounded border bg-white" /> Available
+                              </span>
+                              <span className="inline-flex items-center gap-2">
+                                <span className="w-3 h-3 inline-block rounded border bg-gray-200" /> Taken
+                              </span>
+                              <span className="inline-flex items-center gap-2">
+                                <span className="w-3 h-3 inline-block rounded border ring-2 ring-red-700 bg-yellow-100" /> Selected
+                              </span>
+                              <span className="inline-flex items-center gap-2">
+                                <span className="w-3 h-3 inline-block rounded border bg-red-50" /> ADA
+                              </span>
+                            </div>
 
-  const onToggleAda = (seatId) => {
-    updateSeatForEvent(eventId, seatId, (prev) => ({
-      isAda: !prev.isAda,
-    }));
-    window.location.reload();
-  };
+                            {/* Seats grid */}
+                            <div className="mb-10" style={{ position: "relative" }}>
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  background: "#fff",
+                                  borderRadius: "1rem",
+                                  zIndex: 0,
+                                  boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
+                                }}
+                              />
+                              <div className="grid grid-cols-4 gap-4" style={{ position: "relative", zIndex: 1 }}>
+                                {seats.map((seat) => {
+                                  const isTaken = taken.has(seat.seatId);
+                                  const isSelected = selected.includes(seat.seatId);
+                                  return (
+                                    <button
+                                      key={seat.seatId}
+                                      disabled={isTaken}
+                                      onClick={() => toggleSeat(seat.seatId)}
+                                      className={[
+                                        "px-4 py-3 rounded-lg border text-base transition-colors mb-2",
+                                        isTaken
+                                          ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                                          : "hover:bg-red-100",
+                                        isSelected ? "ring-2 ring-red-700 bg-yellow-100" : "",
+                                        seat.isAda ? "bg-red-50" : "",
+                                      ].join(" ")}
+                                      aria-label={`Seat ${seat.label}${seat.isAda ? " (ADA)" : ""}${
+                                        isTaken ? " (Taken)" : ""
+                                      }`}
+                                    >
+                                      {seat.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
 
-  return (
-    <div className="max-w-6xl mx-auto p-6">
-      {/* Event header */}
-      <div className="mb-6">
-        <button
-          onClick={() => navigate("/events")}
-          className="text-sm text-indigo-600 hover:underline"
-        >
-          ← Back to Events
-        </button>
-        <h1 className="text-2xl font-semibold mt-2">{event.title}</h1>
-        <p className="text-sm text-gray-500">
-          TD Arena • {new Date(event.startTime).toLocaleString()}
-        </p>
-      </div>
+                            {isAdmin && (
+                              <div className="admin-card">
+                                <h3 className="text-xl font-bold mb-4">Admin: Manage Seats</h3>
+                                <form onSubmit={onAddSeat} className="flex gap-4 mb-6">
+                                  <input
+                                    name="seatId"
+                                    placeholder="Seat ID (e.g. D1)"
+                                    className="px-3 py-2 rounded text-black bg-white"
+                                  />
+                                  <input
+                                    name="label"
+                                    placeholder="Label (optional)"
+                                    className="px-3 py-2 rounded text-black bg-white"
+                                  />
+                                  <label className="flex items-center gap-2">
+                                    <input type="checkbox" name="isAda" /> ADA
+                                  </label>
+                                  <button className="admin-btn">Add seat</button>
+                                </form>
+                                <div className="space-y-3">
+                                  {adminSeats.map((s) => (
+                                    <div
+                                      key={s.seatId}
+                                      className="flex items-center justify-between border rounded p-3 mb-2 bg-red-50"
+                                    >
+                                      <div>
+                                        <div className="font-medium text-lg text-black">
+                                          {s.label} ({s.seatId}) {s.isAda ? "• ADA" : ""}
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          onClick={() => onToggleAda(s.seatId)}
+                                          className="admin-btn"
+                                          style={{ backgroundColor: "#991b1b" }}
+                                        >
+                                          Toggle ADA
+                                        </button>
+                                        <button
+                                          onClick={() => onRegisterSeat(s.seatId)}
+                                          className="admin-btn"
+                                          style={{ backgroundColor: "#991b1b" }}
+                                        >
+                                          Register
+                                        </button>
+                                        <button
+                                          onClick={() => onRemoveSeat(s.seatId)}
+                                          className="admin-btn"
+                                          style={{ backgroundColor: "#991b1b" }}
+                                        >
+                                          Remove
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
 
-      {/* Legend */}
-      <div className="flex flex-wrap gap-4 items-center text-xs text-gray-600 mb-4">
-        <span className="inline-flex items-center gap-2">
-          <span className="w-4 h-4 inline-block rounded border bg-gray-200" />
-          Taken
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <span className="w-4 h-4 inline-block rounded border bg-yellow-100" />
-          Selected
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <span className="w-4 h-4 inline-block rounded border bg-blue-50" />
-          ADA
-        </span>
-      </div>
-
-      {/* Seats grid */}
-      <div className="mb-8">
-        <div
-          className="mb-3 text-xs text-gray-500 uppercase tracking-wide"
-        >
-          Choose your seats
-          {sectionId && (
-            <span className="ml-2 text-indigo-600 font-medium">
-              (Section {sectionId})
-            </span>
-          )}
-        </div>
-        <div className="grid grid-cols-4 gap-3">
-          {seats.map((seat) => {
-            const isTaken = takenSet.has(seat.id);
-            const isSelected = selected.includes(seat.id);
-
-            let base =
-              "px-3 py-2 rounded-lg text-sm border transition shadow-sm";
-
-            if (isTaken) {
-              base +=
-                " bg-gray-200 text-gray-400 border-gray-300 cursor-not-allowed";
-            } else if (isSelected) {
-              base +=
-                " bg-yellow-100 border-yellow-400 text-yellow-900 font-semibold";
-            } else if (seat.isAda) {
-              base +=
-                " bg-blue-50 border-blue-300 text-blue-900 hover:bg-blue-100";
-            } else {
-              base +=
-                " bg-white border-gray-200 hover:bg-gray-50 hover:border-indigo-400";
-            }
-
-            return (
-              <button
-                key={seat.id}
-                onClick={() => toggleSeat(seat.id)}
-                disabled={isTaken}
-                className={base}
-                aria-label={`Seat ${seat.label}${
-                  seat.isAda ? " (ADA)" : ""
-                }${isTaken ? " (Taken)" : ""}`}
-              >
-                {seat.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Summary + actions */}
-      <div className="flex items-center justify-between gap-6">
-        <div className="text-sm text-gray-700">
-          <div>Price each: ${priceEach.toFixed(2)}</div>
-          <div>Seats selected: {selected.length}</div>
-          <div>
-            Subtotal:{" "}
-            <span className="font-semibold">
-              ${subtotal.toFixed(2)}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex gap-3">
-          <button
-            onClick={clearSelected}
-            disabled={selected.length === 0}
-            className={`px-4 py-2 rounded-xl border text-sm ${
-              selected.length === 0
-                ? "text-gray-400 border-gray-200 cursor-not-allowed"
-                : "hover:bg-gray-50"
-            }`}
-          >
-            Clear
-          </button>
-          <button
-            onClick={proceed}
-            disabled={selected.length === 0}
-            className={`px-4 py-2 rounded-xl text-sm ${
-              selected.length === 0
-                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                : "bg-indigo-600 text-white hover:bg-indigo-700"
-            }`}
-          >
-            Continue
-          </button>
-        </div>
-      </div>
-
-      {/* Admin controls */}
-      {isAdmin && (
-        <div className="mt-10 border-t pt-6">
-          <h2 className="text-lg font-semibold mb-3">
-            Admin: Manage Seats
-          </h2>
-          <form
-            onSubmit={onAddSeat}
-            className="flex flex-wrap items-center gap-3 mb-4"
-          >
-            <input
-              name="id"
-              value={adminForm.id}
-              onChange={onAdminChange}
-              placeholder="Seat ID (e.g. D1)"
-              className="px-3 py-2 rounded border text-sm"
-            />
-            <input
-              name="label"
-              value={adminForm.label}
-              onChange={onAdminChange}
-              placeholder="Label (optional)"
-              className="px-3 py-2 rounded border text-sm"
-            />
-            <label className="inline-flex items-center gap-2 text-xs">
-              <input
-                type="checkbox"
-                name="isAda"
-                checked={adminForm.isAda}
-                onChange={onAdminChange}
-              />
-              ADA
-            </label>
-            <button
-              type="submit"
-              className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs hover:bg-indigo-700"
-            >
-              Add seat
-            </button>
-          </form>
-
-          <div className="grid gap-2 text-xs">
-            {allSeats.map((s) => (
-              <div
-                key={s.id}
-                className="flex items-center justify-between px-3 py-2 rounded border bg-gray-50"
-              >
-                <div>
-                  <div className="font-medium">
-                    {s.label} ({s.id}){" "}
-                    {s.isAda && (
-                      <span className="text-blue-700">
-                        • ADA
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onToggleAda(s.id)}
-                    className="px-2 py-1 rounded bg-white border text-[10px] hover:bg-gray-100"
-                  >
-                    Toggle ADA
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onRemoveSeat(s.id)}
-                    className="px-2 py-1 rounded bg-red-600 text-white text-[10px] hover:bg-red-700"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+                            {/* Summary / actions */}
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm text-gray-600">
+                                <div>Price each: ${priceEach.toFixed(2)}</div>
+                                <div>Seats selected: {selected.length}</div>
+                                <div>
+                                  Subtotal: <span className="font-semibold">${subtotal.toFixed(2)}</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <button
+                                  onClick={() => setSelected([])}
+                                  disabled={selected.length === 0}
+                                  className={`px-4 py-2 rounded-xl border ${
+                                    selected.length === 0
+                                      ? "text-gray-400 border-gray-200 cursor-not-allowed"
+                                      : "hover:bg-gray-50"
+                                  }`}
+                                >
+                                  Clear
+                                </button>
+                                <button
+                                  disabled={selected.length === 0}
+                                  onClick={proceed}
+                                  className={`px-4 py-2 rounded-xl ${
+                                    selected.length
+                                      ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                                      : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                                  }`}
+                                >
+                                  Continue
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
 }

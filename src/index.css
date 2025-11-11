@@ -52,3 +52,7 @@ body {
 .admin-btn:hover {
 	background-color: #991b1b; /* red-800 */
 }
+/* Tailwind directives - required for Tailwind utility classes to be generated */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
