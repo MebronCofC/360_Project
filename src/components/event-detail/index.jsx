@@ -184,7 +184,7 @@ export default function EventDetail() {
                       };
 
                       return (
-                        <div className="max-w-3xl mx-auto p-6 mt-12" style={{ position: "relative" }}>
+                        <div className="max-w-6xl mx-auto p-6 mt-12" style={{ position: "relative" }}>
                           <div
                             style={{
                               position: "absolute",
@@ -237,69 +237,58 @@ export default function EventDetail() {
                               </span>
                             </div>
 
-                            {/* Seats grid (bleacher-style: Row A at bottom) */}
-                            <div className="mb-10" style={{ position: "relative" }}>
-                              <div
-                                style={{
-                                  position: "absolute",
-                                  top: 0,
-                                  left: 0,
-                                  right: 0,
-                                  bottom: 0,
-                                  background: "#fff",
-                                  borderRadius: "1rem",
-                                  zIndex: 0,
-                                  boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
-                                }}
-                              />
-                              <div className="flex flex-col-reverse gap-2 p-4 overflow-x-auto" style={{ position: "relative", zIndex: 1 }}>
-                                {Object.entries(
-                                  seats.reduce((acc, seat) => {
-                                    // seat.label like A1, B12
-                                    const row = seat.label.match(/^[A-Z]+/)[0];
-                                    acc[row] = acc[row] || [];
-                                    acc[row].push(seat);
-                                    return acc;
-                                  }, {})
-                                ).sort(([rowA],[rowB]) => rowA.localeCompare(rowB))
-                                .map(([row, rowSeats]) => (
-                                  <div key={row} className="flex items-center gap-2 min-w-max">
-                                    <div className="text-xs font-bold text-gray-700 w-12 text-right flex-shrink-0">
-                                      Row {row}
+                            {/* Seats grid (bleacher-style: Row A at bottom, all visible) */}
+                            <div className="mb-10">
+                              <div className="inline-block bg-white rounded-lg p-4 shadow-sm">
+                                <div className="flex flex-col-reverse gap-2">
+                                  {Object.entries(
+                                    seats.reduce((acc, seat) => {
+                                      const row = seat.label.match(/^[A-Z]+/)[0];
+                                      acc[row] = acc[row] || [];
+                                      acc[row].push(seat);
+                                      return acc;
+                                    }, {})
+                                  ).sort(([rowA],[rowB]) => rowA.localeCompare(rowB))
+                                  .map(([row, rowSeats]) => (
+                                    <div key={row} className="flex items-center gap-2">
+                                      <div className="text-xs font-bold text-gray-700 w-8 text-right flex-shrink-0">
+                                        {row}
+                                      </div>
+                                      <div className="flex gap-1 flex-nowrap">
+                                        {rowSeats.sort((a,b)=>{
+                                          const na = Number(a.label.replace(/^[A-Z]+/,''));
+                                          const nb = Number(b.label.replace(/^[A-Z]+/,''));
+                                          return na-nb;
+                                        }).map(seat => {
+                                          const isTaken = taken.has(seat.seatId);
+                                          const isSelected = selected.includes(seat.seatId);
+                                          return (
+                                            <button
+                                              key={seat.seatId}
+                                              disabled={isTaken}
+                                              onClick={() => toggleSeat(seat.seatId)}
+                                              className={[
+                                                "px-2 py-1.5 rounded text-xs font-medium transition-all border",
+                                                isTaken
+                                                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                                                  : "bg-white hover:bg-red-100",
+                                                isSelected ? "ring-2 ring-red-700 bg-yellow-100 font-bold" : "",
+                                                seat.isAda ? "bg-red-50" : "",
+                                              ].join(" ")}
+                                              style={{ minWidth: '2rem' }}
+                                              aria-label={`Seat ${seat.label}${seat.isAda ? " (ADA)" : ""}${
+                                                isTaken ? " (Taken)" : ""
+                                              }`}
+                                              title={seat.label}
+                                            >
+                                              {seat.label.replace(/^[A-Z]+/,'')}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
                                     </div>
-                                    <div className="flex gap-1 flex-nowrap">
-                                      {rowSeats.sort((a,b)=>{
-                                        const na = Number(a.label.replace(/^[A-Z]+/,''));
-                                        const nb = Number(b.label.replace(/^[A-Z]+/,''));
-                                        return na-nb;
-                                      }).map(seat => {
-                                        const isTaken = taken.has(seat.seatId);
-                                        const isSelected = selected.includes(seat.seatId);
-                                        return (
-                                          <button
-                                            key={seat.seatId}
-                                            disabled={isTaken}
-                                            onClick={() => toggleSeat(seat.seatId)}
-                                            className={[
-                                              "px-3 py-2 rounded border text-xs font-medium transition-all flex-shrink-0",
-                                              isTaken
-                                                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                                                : "bg-white hover:bg-red-100",
-                                              isSelected ? "ring-2 ring-red-700 bg-yellow-100 font-bold" : "",
-                                              seat.isAda ? "bg-red-50" : "",
-                                            ].join(" ")}
-                                            style={{ minWidth: '2.5rem' }}
-                                            aria-label={`Seat ${seat.label}${seat.isAda ? " (ADA)" : ""}${
-                                              isTaken ? " (Taken)" : ""
-                                            }`}
-                                          >
-                                            {seat.label.replace(/^[A-Z]+/,'')}
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-                                ))}
+                                  ))}
+                                </div>
                               </div>
                             </div>
 
