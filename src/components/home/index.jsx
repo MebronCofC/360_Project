@@ -61,81 +61,85 @@ const Home = () => {
 
             {/* Current Events Section */}
             <section className="mb-12">
-                <h2 className="text-2xl font-semibold mb-4 bg-green-600 text-white rounded-lg px-6 py-3 inline-block">
-                    🔴 Live Now at TD Arena
-                </h2>
-                {currentEvents.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
-                        {currentEvents.map(ev => (
-                            <div
-                                key={ev.id}
-                                onClick={() => handleEventClick(ev.id)}
-                                className="bg-white border-4 border-green-500 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all cursor-pointer transform hover:scale-105"
-                            >
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className="w-3 h-3 bg-red-600 rounded-full animate-pulse"></span>
-                                    <span className="text-sm font-bold text-green-700 uppercase">Live Now</span>
+                <div className="bg-white/90 border border-gray-300 rounded-2xl p-5 shadow-sm">
+                    <h2 className="text-2xl font-semibold mb-4 bg-green-600 text-white rounded-lg px-6 py-3 inline-block">
+                        🔴 Live Now at TD Arena
+                    </h2>
+                    {currentEvents.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {currentEvents.map(ev => (
+                                <div
+                                    key={ev.id}
+                                    onClick={() => handleEventClick(ev.id)}
+                                    className="bg-white border-4 border-green-500 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all cursor-pointer transform hover:scale-105"
+                                >
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <span className="w-3 h-3 bg-red-600 rounded-full animate-pulse"></span>
+                                        <span className="text-sm font-bold text-green-700 uppercase">Live Now</span>
+                                    </div>
+                                    <h3 className="text-xl font-bold mb-2 text-gray-900">{ev.title}</h3>
+                                    {ev.description && (
+                                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{ev.description}</p>
+                                    )}
+                                    <div className="text-sm text-gray-500 mb-2">
+                                        📍 {ev.venueId || 'TD Arena'}
+                                    </div>
+                                    <div className="text-sm text-gray-700 font-semibold">
+                                        Started: {new Date(ev.startTime).toLocaleTimeString()}
+                                    </div>
+                                    <div className="mt-4 text-lg font-bold text-purple-600">
+                                        ${ev.basePrice}
+                                    </div>
                                 </div>
-                                <h3 className="text-xl font-bold mb-2 text-gray-900">{ev.title}</h3>
-                                {ev.description && (
-                                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{ev.description}</p>
-                                )}
-                                <div className="text-sm text-gray-500 mb-2">
-                                    📍 {ev.venueId || 'TD Arena'}
-                                </div>
-                                <div className="text-sm text-gray-700 font-semibold">
-                                    Started: {new Date(ev.startTime).toLocaleTimeString()}
-                                </div>
-                                <div className="mt-4 text-lg font-bold text-purple-600">
-                                    ${ev.basePrice}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="bg-white rounded-lg p-8 text-center text-gray-500 mt-4">
-                        No live games at the moment
-                    </div>
-                )}
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-lg p-8 text-center text-gray-500 mt-4">
+                            No live games at the moment
+                        </div>
+                    )}
+                </div>
             </section>
 
             {/* Upcoming Events Section */}
             <section>
-                <h2 className="text-2xl font-semibold mb-4 bg-purple-600 text-white rounded-lg px-6 py-3 inline-block">
-                    📅 Upcoming Events
-                </h2>
-                {upcomingEvents.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
-                        {upcomingEvents.map(ev => (
-                            <div
-                                key={ev.id}
-                                onClick={() => handleEventClick(ev.id)}
-                                className="bg-white border border-gray-300 rounded-xl p-6 shadow-md hover:shadow-xl transition-all cursor-pointer transform hover:scale-105 hover:border-purple-500"
-                            >
-                                <h3 className="text-xl font-bold mb-2 text-gray-900">{ev.title}</h3>
-                                {ev.description && (
-                                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{ev.description}</p>
-                                )}
-                                <div className="text-sm text-gray-500 mb-2">
-                                    📍 {ev.venueId || 'TD Arena'}
+                <div className="bg-white/90 border border-gray-300 rounded-2xl p-5 shadow-sm">
+                    <h2 className="text-2xl font-semibold mb-4 bg-purple-600 text-white rounded-lg px-6 py-3 inline-block">
+                        📅 Upcoming Events
+                    </h2>
+                    {upcomingEvents.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {upcomingEvents.map(ev => (
+                                <div
+                                    key={ev.id}
+                                    onClick={() => handleEventClick(ev.id)}
+                                    className="bg-white border border-gray-300 rounded-xl p-6 shadow-md hover:shadow-xl transition-all cursor-pointer transform hover:scale-105 hover:border-purple-500"
+                                >
+                                    <h3 className="text-xl font-bold mb-2 text-gray-900">{ev.title}</h3>
+                                    {ev.description && (
+                                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{ev.description}</p>
+                                    )}
+                                    <div className="text-sm text-gray-500 mb-2">
+                                        📍 {ev.venueId || 'TD Arena'}
+                                    </div>
+                                    <div className="text-sm text-gray-700 mb-1">
+                                        📆 {new Date(ev.startTime).toLocaleDateString()}
+                                    </div>
+                                    <div className="text-sm text-gray-700 font-semibold mb-3">
+                                        🕐 {new Date(ev.startTime).toLocaleTimeString()}
+                                    </div>
+                                    <div className="mt-4 text-lg font-bold text-purple-600">
+                                        ${ev.basePrice}
+                                    </div>
                                 </div>
-                                <div className="text-sm text-gray-700 mb-1">
-                                    📆 {new Date(ev.startTime).toLocaleDateString()}
-                                </div>
-                                <div className="text-sm text-gray-700 font-semibold mb-3">
-                                    🕐 {new Date(ev.startTime).toLocaleTimeString()}
-                                </div>
-                                <div className="mt-4 text-lg font-bold text-purple-600">
-                                    ${ev.basePrice}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="bg-white rounded-lg p-8 text-center text-gray-500 mt-4">
-                        No upcoming events at this time. Check back soon!
-                    </div>
-                )}
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-lg p-8 text-center text-gray-500 mt-4">
+                            No upcoming events at this time. Check back soon!
+                        </div>
+                    )}
+                </div>
             </section>
 
             {currentEvents.length === 0 && upcomingEvents.length === 0 && (
