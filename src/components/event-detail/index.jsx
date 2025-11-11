@@ -18,6 +18,43 @@ export default function EventDetail() {
   const [taken, setTaken] = useState(new Set());
   const [selected, setSelected] = useState([]);
 
+  // Section-based seat generation rules
+  const LARGE_SECTIONS = new Set([110,111,112,113,114,115,101,102,103,104,105,106,107,109]);
+  const SMALL_SECTIONS = new Set([210,211,213,214,215,216,201,202,203,204,205,206,207,208,209]);
+
+  const letters = (from, to) => {
+    const start = from.charCodeAt(0);
+    const end = to.charCodeAt(0);
+    const arr = [];
+    for (let c = start; c <= end; c++) arr.push(String.fromCharCode(c));
+    return arr;
+  };
+
+  const generateSectionSeats = (section) => {
+    const secStr = String(section);
+    const upper = secStr.toUpperCase();
+    // President suite (labelled SUITE on chart)
+    if (upper.includes("SUITE")) {
+      const rows = letters('A','C');
+      const perRow = 10;
+      return rows.flatMap(r => Array.from({length: perRow}, (_,i) => ({
+        seatId: `${secStr}-${r}${i+1}`,
+        label: `${r}${i+1}`,
+        isAda: false,
+      })));
+    }
+    const num = Number(secStr);
+    const isLarge = LARGE_SECTIONS.has(num);
+    const isSmall = SMALL_SECTIONS.has(num);
+    const rows = isLarge ? letters('A','L') : letters('A','E');
+    const perRow = 18;
+    return rows.flatMap(r => Array.from({length: perRow}, (_,i) => ({
+      seatId: `${secStr}-${r}${i+1}`,
+      label: `${r}${i+1}`,
+      isAda: false,
+    })));
+  };
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -25,12 +62,17 @@ export default function EventDetail() {
         const event = events.find((e) => e.id === eventId);
         setEv(event || null);
         if (event) {
-          const eventSeats = await seatsForEvent(eventId);
-          setSeats(eventSeats);
-          if (isAdmin) {
-            const allSeats = await getSeatsForEvent(eventId);
-            setAdminSeats(allSeats);
+          let eventSeats = [];
+          if (sectionNumber) {
+            eventSeats = generateSectionSeats(sectionNumber);
+          } else {
+            eventSeats = await seatsForEvent(eventId);
+            if (isAdmin) {
+              const allSeats = await getSeatsForEvent(eventId);
+              setAdminSeats(allSeats);
+            }
           }
+          setSeats(eventSeats);
           const takenSeats = await getAssignedSeats(eventId);
           setTaken(takenSeats || new Set());
         }
@@ -125,15 +167,16 @@ export default function EventDetail() {
 
                       const proceed = () => {
                         if (!selected.length) return;
-                        const pending = {
-                          eventId: ev.id,
-                          eventTitle: ev.title,
-                          startTime: ev.startTime,
-                          seats: selected,
-                          priceEach,
-                          subtotal,
-                          createdAt: Date.now(),
-                        };
+                          const pending = {
+                            eventId: ev.id,
+                            eventTitle: ev.title,
+                            startTime: ev.startTime,
+                            section: sectionNumber || null,
+                            seats: selected,
+                            priceEach,
+                            subtotal,
+                            createdAt: Date.now(),
+                          };
                         try {
                           localStorage.setItem("pendingOrder", JSON.stringify(pending));
                         } catch {}
@@ -194,7 +237,7 @@ export default function EventDetail() {
                               </span>
                             </div>
 
-                            {/* Seats grid */}
+                            {/* Seats grid (grouped by rows for section) */}
                             <div className="mb-10" style={{ position: "relative" }}>
                               <div
                                 style={{
@@ -209,35 +252,54 @@ export default function EventDetail() {
                                   boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
                                 }}
                               />
-                              <div className="grid grid-cols-4 gap-4" style={{ position: "relative", zIndex: 1 }}>
-                                {seats.map((seat) => {
-                                  const isTaken = taken.has(seat.seatId);
-                                  const isSelected = selected.includes(seat.seatId);
-                                  return (
-                                    <button
-                                      key={seat.seatId}
-                                      disabled={isTaken}
-                                      onClick={() => toggleSeat(seat.seatId)}
-                                      className={[
-                                        "px-4 py-3 rounded-lg border text-base transition-colors mb-2",
-                                        isTaken
-                                          ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                                          : "hover:bg-red-100",
-                                        isSelected ? "ring-2 ring-red-700 bg-yellow-100" : "",
-                                        seat.isAda ? "bg-red-50" : "",
-                                      ].join(" ")}
-                                      aria-label={`Seat ${seat.label}${seat.isAda ? " (ADA)" : ""}${
-                                        isTaken ? " (Taken)" : ""
-                                      }`}
-                                    >
-                                      {seat.label}
-                                    </button>
-                                  );
-                                })}
+                              <div className="space-y-4" style={{ position: "relative", zIndex: 1 }}>
+                                {Object.entries(
+                                  seats.reduce((acc, seat) => {
+                                    // seat.label like A1, B12
+                                    const row = seat.label.match(/^[A-Z]+/)[0];
+                                    acc[row] = acc[row] || [];
+                                    acc[row].push(seat);
+                                    return acc;
+                                  }, {})
+                                ).map(([row, rowSeats]) => (
+                                  <div key={row}>
+                                    <div className="text-xs font-semibold text-gray-500 mb-1">Row {row}</div>
+                                    <div className="grid grid-cols-9 sm:grid-cols-12 md:grid-cols-18 gap-2">
+                                      {rowSeats.sort((a,b)=>{
+                                        const na = Number(a.label.replace(/^[A-Z]+/,''));
+                                        const nb = Number(b.label.replace(/^[A-Z]+/,''));
+                                        return na-nb;
+                                      }).map(seat => {
+                                        const isTaken = taken.has(seat.seatId);
+                                        const isSelected = selected.includes(seat.seatId);
+                                        return (
+                                          <button
+                                            key={seat.seatId}
+                                            disabled={isTaken}
+                                            onClick={() => toggleSeat(seat.seatId)}
+                                            className={[
+                                              "px-2 py-2 rounded-lg border text-xs transition-colors",
+                                              isTaken
+                                                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                                                : "hover:bg-red-100",
+                                              isSelected ? "ring-2 ring-red-700 bg-yellow-100" : "",
+                                              seat.isAda ? "bg-red-50" : "",
+                                            ].join(" ")}
+                                            aria-label={`Seat ${seat.label}${seat.isAda ? " (ADA)" : ""}${
+                                              isTaken ? " (Taken)" : ""
+                                            }`}
+                                          >
+                                            {seat.label}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </div>
 
-                            {isAdmin && (
+                            {isAdmin && !sectionNumber && (
                               <div className="admin-card">
                                 <h3 className="text-xl font-bold mb-4">Admin: Manage Seats</h3>
                                 <form onSubmit={onAddSeat} className="flex gap-4 mb-6">
