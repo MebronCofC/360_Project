@@ -34,12 +34,12 @@ export async function areAvailable(eventId, seatIds = []) {
 /** 
  * Assign seats to an owner; throws if any already taken 
  */
-export async function assignSeats(eventId, seatIds = [], ownerUid, ticketIdBySeat = {}, eventTitle = "Event", startTime = null) {
+export async function assignSeats(eventId, seatIds = [], ownerUid, ticketIdBySeat = {}, eventTitle = "Event", startTime = null, endTime = null) {
   try {
     // Use provided event details or defaults
     const finalStartTime = startTime || new Date().toISOString();
     
-    const orderId = await assignSeatsInDB(eventId, seatIds, ownerUid, eventTitle, finalStartTime);
+  const orderId = await assignSeatsInDB(eventId, seatIds, ownerUid, eventTitle, finalStartTime, endTime);
     
     return seatIds.map(seatId => ({
       seatId,

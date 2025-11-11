@@ -308,7 +308,7 @@ export async function checkSeatsAvailability(eventId, seatIds) {
 }
 
 // Assign seats (create tickets)
-export async function assignSeatsInDB(eventId, seatIds, ownerUid, eventTitle, startTime) {
+export async function assignSeatsInDB(eventId, seatIds, ownerUid, eventTitle, startTime, endTime = null) {
   try {
     // Check availability first
     const unavailable = await checkSeatsAvailability(eventId, seatIds);
@@ -330,6 +330,7 @@ export async function assignSeatsInDB(eventId, seatIds, ownerUid, eventTitle, st
         eventId,
         eventTitle,
         startTime,
+        endTime: endTime || null,
         seatId,
         qrPayload: `ticket:${orderId}:${seatId}:${eventId}`,
         status: "Issued",

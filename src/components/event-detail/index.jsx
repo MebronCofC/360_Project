@@ -143,7 +143,7 @@ export default function EventDetail() {
                         const ownerUid = prompt("Enter owner UID to register this seat for:");
                         if (!ownerUid) return;
                         try {
-                          await assignSeats(eventId, [seatId], ownerUid, {}, ev.title, ev.startTime);
+                          await assignSeats(eventId, [seatId], ownerUid, {}, ev.title, ev.startTime, ev.endTime || null);
                           alert("Seat registered");
                           const takenSeats = await getAssignedSeats(eventId);
                           setTaken(takenSeats || new Set());

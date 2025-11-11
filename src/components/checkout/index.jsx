@@ -61,7 +61,7 @@ export default function Checkout() {
 
   // 3) assign seats to this user
   try {
-    await assignSeats(pending.eventId, pending.seats, ownerUid, ticketIdBySeat, pending.eventTitle, pending.startTime);
+  await assignSeats(pending.eventId, pending.seats, ownerUid, ticketIdBySeat, pending.eventTitle, pending.startTime, pending.endTime || null);
     localStorage.removeItem("pendingOrder");
     setOrderId(newOrderId);
     setSaved(true);
@@ -85,7 +85,7 @@ export default function Checkout() {
   <h1 className="text-2xl font-semibold">Checkout</h1>
       <div className="border rounded-xl p-4">
         <div className="font-medium mb-2">{pending.eventTitle}</div>
-        <div className="text-gray-600 mb-4">{new Date(pending.startTime).toLocaleString()}</div>
+  <div className="text-gray-600 mb-4">{new Date(pending.startTime).toLocaleString()} {pending.endTime ? `- ${new Date(pending.endTime).toLocaleString()}` : ''}</div>
         <div className="text-sm text-gray-500 mb-2">Seats: {pending.seats.join(", ")}</div>
         <div className="text-sm">Total (demo w/discount): <span className="font-semibold">${total.toFixed(2)}</span></div>
       </div>
