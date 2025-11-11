@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { releaseSeat } from "../../data/seatAssignments";
 import { useAuth } from "../../contexts/authContext";
-import { getTicketsForUserFromDB, deleteTicketFromDB } from "../../firebase/firestore";
+import { getTicketsForUserFromDB, deleteTicketFromDB, getEventByIdFromDB, invalidateTicketsForEventInDB } from "../../firebase/firestore";
 
 export default function MyTickets() {
   const { currentUser } = useAuth();
   const [deletingTicket, setDeletingTicket] = useState(null);
   const [tickets, setTickets] = useState([]);
   const [loaded, setLoaded] = useState(false);
+  const [invalidEventIds, setInvalidEventIds] = useState(new Set());
 
   // Load tickets from Firestore for the logged-in user
   useEffect(() => {
@@ -16,6 +17,25 @@ export default function MyTickets() {
         try {
           const userTickets = await getTicketsForUserFromDB(currentUser.uid);
           setTickets(userTickets);
+
+          // Check whether the referenced event documents still exist.
+          const uniqueEventIds = Array.from(new Set(userTickets.map(t => t.eventId).filter(Boolean)));
+          if (uniqueEventIds.length) {
+            const results = await Promise.all(uniqueEventIds.map(async (eid) => ({
+              id: eid,
+              exists: !!(await getEventByIdFromDB(eid))
+            })));
+            const missing = results.filter(r => !r.exists).map(r => r.id);
+            if (missing.length) {
+              // Mark as invalid in UI immediately
+              setInvalidEventIds(new Set(missing));
+              // Retroactively mark all tickets for these events as invalid in Firestore
+              await Promise.all(missing.map(eid => invalidateTicketsForEventInDB(eid)));
+              // Reload to reflect updated ticket statuses
+              const refreshed = await getTicketsForUserFromDB(currentUser.uid);
+              setTickets(refreshed);
+            }
+          }
         } catch (error) {
           console.error('Error loading tickets:', error);
           setTickets([]);
@@ -157,7 +177,7 @@ export default function MyTickets() {
               <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-600">Status</div>
                 {(() => {
-                  const isInvalid = t.status === 'Invalid' || !!t.invalidReason;
+                  const isInvalid = t.status === 'Invalid' || !!t.invalidReason || invalidEventIds.has(t.eventId);
                   const label = isInvalid ? `Invalid - ${t.invalidReason || 'The Event has been cancelled'}` : (t.status || 'Issued');
                   const classes = isInvalid ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
                   return (
