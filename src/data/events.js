@@ -7,7 +7,9 @@ import {
   getSeatsForEventFromDB,
   addSeatToEventInDB,
   deleteSeatFromDB,
-  updateSeatInDB
+  updateSeatInDB,
+  moveEventToPastInDB,
+  getPastEventsFromDB
 } from "../firebase/firestore";
 
 // Default demo seats for new events
@@ -34,7 +36,19 @@ export async function getEvents() {
   return await getEventsFromDB();
 }
 
+export async function getPastEvents() {
+  return await getPastEventsFromDB();
+}
+
 export async function addEvent(event) {
+  if (!event.startTime || !event.endTime) {
+    throw new Error("startTime and endTime are required");
+  }
+  const start = new Date(event.startTime);
+  const end = new Date(event.endTime);
+  if (!(start instanceof Date) || isNaN(start) || !(end instanceof Date) || isNaN(end) || end <= start) {
+    throw new Error("endTime must be after startTime");
+  }
   const eventId = await addEventToDB(event);
   
   // Add default seats for new event
@@ -51,7 +65,34 @@ export async function removeEvent(eventId) {
 }
 
 export async function updateEvent(eventId, updates) {
+  if ((updates.startTime && !updates.endTime) || (!updates.startTime && updates.endTime)) {
+    // If either is provided, both should be validated together; try to read the other from DB would require extra call.
+    // For simplicity, enforce both provided when changing times.
+    throw new Error("Provide both startTime and endTime when updating times");
+  }
+  if (updates.startTime && updates.endTime) {
+    const start = new Date(updates.startTime);
+    const end = new Date(updates.endTime);
+    if (!(start instanceof Date) || isNaN(start) || !(end instanceof Date) || isNaN(end) || end <= start) {
+      throw new Error("endTime must be after startTime");
+    }
+  }
   await updateEventInDB(eventId, updates);
+}
+
+// Archive any events that have ended (client-side sweep)
+export async function archiveFinishedEvents() {
+  const now = new Date();
+  const events = await getEventsFromDB();
+  for (const ev of events) {
+    if (ev.endTime && new Date(ev.endTime) < now) {
+      try {
+        await moveEventToPastInDB(ev.id || ev.eventId);
+      } catch (e) {
+        console.error("Failed to archive event", ev.id || ev.eventId, e);
+      }
+    }
+  }
 }
 
 // ==================== SEATS ====================

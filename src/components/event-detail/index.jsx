@@ -171,6 +171,7 @@ export default function EventDetail() {
                             eventId: ev.id,
                             eventTitle: ev.title,
                             startTime: ev.startTime,
+                            endTime: ev.endTime || null,
                             section: sectionNumber || null,
                             seats: selected,
                             priceEach,
@@ -212,7 +213,7 @@ export default function EventDetail() {
                                 <div className="text-sm text-gray-600 mt-2 italic">{ev.description}</div>
                               )}
                               <div className="text-sm text-gray-500 mt-2">
-                                {new Date(ev.startTime).toLocaleString()} {ev.venueId && `• ${ev.venueId}`}
+                                {new Date(ev.startTime).toLocaleString()} - {ev.endTime ? new Date(ev.endTime).toLocaleString() : 'TBD'} {ev.venueId && `• ${ev.venueId}`}
                               </div>
                               {sectionNumber && (
                                 <div className="mt-3 inline-block px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold">

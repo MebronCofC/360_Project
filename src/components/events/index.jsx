@@ -33,12 +33,20 @@ export default function Events() {
     const title = form.title.value.trim();
     const description = form.description.value.trim();
     const startTime = form.startTime.value;
+    const endTime = form.endTime.value;
     const venueId = form.venueId.value.trim();
     const basePrice = Number(form.basePrice.value) || 0;
-    if (!title || !startTime) return;
+    if (!title || !startTime || !endTime) {
+      alert("Please provide title, start time, and end time.");
+      return;
+    }
+    if (new Date(endTime) <= new Date(startTime)) {
+      alert("End time must be after start time.");
+      return;
+    }
     
     try {
-      const newEv = { title, description, startTime, venueId, basePrice };
+      const newEv = { title, description, startTime, endTime, venueId, basePrice };
       await addEvent(newEv);
       await loadEvents();
       form.reset();
@@ -66,6 +74,7 @@ export default function Events() {
       title: event.title,
       description: event.description || '',
       startTime: event.startTime,
+      endTime: event.endTime,
       venueId: event.venueId,
       basePrice: event.basePrice
     });
@@ -77,12 +86,20 @@ export default function Events() {
     const title = form.title.value.trim();
     const description = form.description.value.trim();
     const startTime = form.startTime.value;
+    const endTime = form.endTime.value;
     const venueId = form.venueId.value.trim();
     const basePrice = Number(form.basePrice.value) || 0;
-    if (!title || !startTime) return;
+    if (!title || !startTime || !endTime) {
+      alert("Please provide title, start time, and end time.");
+      return;
+    }
+    if (new Date(endTime) <= new Date(startTime)) {
+      alert("End time must be after start time.");
+      return;
+    }
     
     try {
-      await updateEvent(editingEvent.id, { title, description, startTime, venueId, basePrice });
+      await updateEvent(editingEvent.id, { title, description, startTime, endTime, venueId, basePrice });
       await loadEvents();
       setEditingEvent(null);
     } catch (error) {
@@ -106,7 +123,8 @@ export default function Events() {
             <input name="title" placeholder="Title" className="px-3 py-2 rounded text-black bg-white col-span-2" />
             <textarea name="description" placeholder="Description (optional)" className="px-3 py-2 rounded text-black bg-white col-span-2 resize-y min-h-[80px]" />
             <input name="startTime" type="datetime-local" className="px-3 py-2 rounded text-black bg-white" />
-            <input name="venueId" placeholder="Venue" className="px-3 py-2 rounded text-black bg-white" />
+            <input name="endTime" type="datetime-local" className="px-3 py-2 rounded text-black bg-white" />
+            <input name="venueId" placeholder="Venue" className="px-3 py-2 rounded text-black bg-white col-span-2" />
             <input name="basePrice" placeholder="Base price" type="number" className="px-3 py-2 rounded text-black bg-white col-span-2" />
             <button type="submit" className="admin-btn col-span-2" style={{backgroundColor:'#7c3aed'}}>Add Event</button>
           </form>
@@ -126,7 +144,7 @@ export default function Events() {
                   </div>
                 )}
                 <div className="text-sm text-gray-500 mb-2">
-                  {new Date(ev.startTime).toLocaleString()} • {ev.venueId}
+                  {new Date(ev.startTime).toLocaleString()} - {new Date(ev.endTime).toLocaleString()} • {ev.venueId}
                 </div>
                 <div className="text-sm text-gray-700">Price: ${ev.basePrice}</div>
               </div>
@@ -182,10 +200,16 @@ export default function Events() {
                 className="px-3 py-2 rounded text-black bg-gray-100" 
               />
               <input 
+                name="endTime" 
+                type="datetime-local" 
+                defaultValue={editingEvent.endTime}
+                className="px-3 py-2 rounded text-black bg-gray-100" 
+              />
+              <input 
                 name="venueId" 
                 defaultValue={editingEvent.venueId}
                 placeholder="Venue" 
-                className="px-3 py-2 rounded text-black bg-gray-100" 
+                className="px-3 py-2 rounded text-black bg-gray-100 col-span-2" 
               />
               <input 
                 name="basePrice" 

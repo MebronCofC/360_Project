@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/authContext'
 import { useNavigate } from 'react-router-dom'
-import { getEvents } from '../../data/events'
+import { getEvents, getPastEvents, archiveFinishedEvents } from '../../data/events'
 
 const Home = () => {
     const { currentUser } = useAuth()
@@ -9,17 +9,21 @@ const Home = () => {
     const [upcomingEvents, setUpcomingEvents] = useState([])
     const [currentEvents, setCurrentEvents] = useState([])
     const [loading, setLoading] = useState(true)
+    const [pastEvents, setPastEvents] = useState([])
 
     useEffect(() => {
         const loadEvents = async () => {
             try {
+                // Archive finished events and then fetch fresh lists
+                await archiveFinishedEvents()
                 const allEvents = await getEvents()
+                const past = await getPastEvents()
                 const now = new Date()
                 
                 // Split events into current (happening now) and upcoming (in the future)
                 const current = allEvents.filter(ev => {
                     const eventStart = new Date(ev.startTime)
-                    const eventEnd = new Date(eventStart.getTime() + 3 * 60 * 60 * 1000) // Assume 3 hour duration
+                    const eventEnd = ev.endTime ? new Date(ev.endTime) : new Date(eventStart.getTime() + 3 * 60 * 60 * 1000)
                     return now >= eventStart && now <= eventEnd
                 })
                 
@@ -30,6 +34,7 @@ const Home = () => {
                 
                 setCurrentEvents(current)
                 setUpcomingEvents(upcoming.slice(0, 6)) // Show max 6 upcoming
+                setPastEvents(past.sort((a,b) => new Date(b.endTime || b.startTime) - new Date(a.endTime || a.startTime)).slice(0,6))
             } catch (error) {
                 console.error('Error loading events:', error)
             } finally {
@@ -85,7 +90,7 @@ const Home = () => {
                                         📍 {ev.venueId || 'TD Arena'}
                                     </div>
                                     <div className="text-sm text-gray-700 font-semibold">
-                                        Started: {new Date(ev.startTime).toLocaleTimeString()}
+                                        {new Date(ev.startTime).toLocaleTimeString()} - {ev.endTime ? new Date(ev.endTime).toLocaleTimeString() : 'TBD'}
                                     </div>
                                     <div className="mt-4 text-lg font-bold text-purple-600">
                                         ${ev.basePrice}
@@ -126,7 +131,7 @@ const Home = () => {
                                         📆 {new Date(ev.startTime).toLocaleDateString()}
                                     </div>
                                     <div className="text-sm text-gray-700 font-semibold mb-3">
-                                        🕐 {new Date(ev.startTime).toLocaleTimeString()}
+                                        🕐 {new Date(ev.startTime).toLocaleTimeString()} - {ev.endTime ? new Date(ev.endTime).toLocaleTimeString() : 'TBD'}
                                     </div>
                                     <div className="mt-4 text-lg font-bold text-purple-600">
                                         ${ev.basePrice}
@@ -137,6 +142,44 @@ const Home = () => {
                     ) : (
                         <div className="bg-white rounded-lg p-8 text-center text-gray-500 mt-4">
                             No upcoming events at this time. Check back soon!
+                        </div>
+                    )}
+                </div>
+            </section>
+
+            {/* Past Events Section */}
+            <section className="mt-12">
+                <div className="bg-white/90 border border-gray-300 rounded-2xl p-5 shadow-sm">
+                    <h2 className="text-2xl font-semibold mb-4 bg-gray-700 text-white rounded-lg px-6 py-3 inline-block">
+                        🕓 Recent Past Events
+                    </h2>
+                    {pastEvents.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {pastEvents.map(ev => (
+                                <div
+                                    key={ev.id}
+                                    className="bg-white border border-gray-300 rounded-xl p-6 shadow-md"
+                                >
+                                    <h3 className="text-xl font-bold mb-2 text-gray-900">{ev.title}</h3>
+                                    {ev.description && (
+                                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{ev.description}</p>
+                                    )}
+                                    <div className="text-sm text-gray-500 mb-2">
+                                        📍 {ev.venueId || 'TD Arena'}
+                                    </div>
+                                    <div className="text-xs text-gray-500 italic mb-2">Ended: {ev.endTime ? new Date(ev.endTime).toLocaleString() : 'Unknown'}</div>
+                                    <div className="text-sm text-gray-700 mb-1">
+                                        📆 {new Date(ev.startTime).toLocaleDateString()}
+                                    </div>
+                                    <div className="text-sm text-gray-700 font-semibold mb-3">
+                                        🕐 {new Date(ev.startTime).toLocaleTimeString()} - {ev.endTime ? new Date(ev.endTime).toLocaleTimeString() : 'TBD'}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-lg p-8 text-center text-gray-500 mt-4">
+                            No past events archived yet.
                         </div>
                     )}
                 </div>

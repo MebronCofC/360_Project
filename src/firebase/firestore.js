@@ -96,6 +96,43 @@ export async function deleteEventFromDB(eventId) {
   }
 }
 
+// Move an event to the pastEvents collection and remove it from active events
+export async function moveEventToPastInDB(eventId) {
+  try {
+    const eventDocRef = doc(db, "events", eventId);
+    const snap = await getDoc(eventDocRef);
+    if (!snap.exists()) return false;
+    const data = snap.data();
+
+    const pastCol = collection(db, "pastEvents");
+    const pastDocRef = doc(pastCol, eventId);
+    await setDoc(pastDocRef, {
+      ...data,
+      archivedAt: serverTimestamp(),
+    });
+
+    // Delete from active events and remove seats
+    await deleteDoc(eventDocRef);
+    await deleteSeatsForEvent(eventId);
+    return true;
+  } catch (error) {
+    console.error("Error moving event to past:", error);
+    throw error;
+  }
+}
+
+// Get all past events
+export async function getPastEventsFromDB() {
+  try {
+    const pastCol = collection(db, "pastEvents");
+    const snapshot = await getDocs(pastCol);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Error getting past events:", error);
+    return [];
+  }
+}
+
 // ==================== SEATS ====================
 
 // Get seats for an event
