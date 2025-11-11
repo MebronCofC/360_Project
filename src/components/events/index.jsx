@@ -113,7 +113,9 @@ export default function Events() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6 mt-12">
+    <div className="max-w-3xl mx-auto p-6 mt-12" style={{ position: 'relative' }}>
+      <div style={{ position:'absolute', top:0, left:0, right:0, bottom:0, borderRadius:'1rem', boxShadow:'0 12px 36px rgba(255,255,255,0.28), 0 4px 12px rgba(255,255,255,0.18)', pointerEvents:'none' }} />
+      <div style={{ position:'relative' }}>
       <h1 className="text-2xl font-semibold mb-8 bg-white border border-gray-300 rounded-lg px-6 py-4 shadow-sm">TD Arena Events</h1>
 
       {isAdmin && (
@@ -237,6 +239,7 @@ export default function Events() {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }

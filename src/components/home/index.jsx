@@ -72,7 +72,7 @@ const Home = () => {
 
             {/* Current Events Section */}
             <section className="mb-12">
-                <div className="bg-white/90 border border-gray-300 rounded-2xl p-5 shadow-sm">
+                <div className="bg-white/90 border border-gray-300 rounded-2xl p-5 shadow-sm" style={{ boxShadow: '0 10px 30px rgba(255,255,255,0.25), 0 2px 8px rgba(255,255,255,0.15)' }}>
                     <h2 className="text-2xl font-semibold mb-4 bg-green-600 text-white rounded-lg px-6 py-3 inline-block">
                         🔴 Live Now at TD Arena
                     </h2>
@@ -114,7 +114,7 @@ const Home = () => {
 
             {/* Upcoming Events Section */}
             <section>
-                <div className="bg-white/90 border border-gray-300 rounded-2xl p-5 shadow-sm">
+                <div className="bg-white/90 border border-gray-300 rounded-2xl p-5 shadow-sm" style={{ boxShadow: '0 10px 30px rgba(255,255,255,0.25), 0 2px 8px rgba(255,255,255,0.15)' }}>
                     <h2 className="text-2xl font-semibold mb-4 bg-purple-600 text-white rounded-lg px-6 py-3 inline-block">
                         📅 Upcoming Events
                     </h2>
@@ -155,7 +155,7 @@ const Home = () => {
 
             {/* Past Events Section */}
             <section className="mt-12">
-                <div className="bg-white/90 border border-gray-300 rounded-2xl p-5 shadow-sm">
+                <div className="bg-white/90 border border-gray-300 rounded-2xl p-5 shadow-sm" style={{ boxShadow: '0 10px 30px rgba(255,255,255,0.25), 0 2px 8px rgba(255,255,255,0.15)' }}>
                     <h2 className="text-2xl font-semibold mb-4 bg-gray-700 text-white rounded-lg px-6 py-3 inline-block">
                         🕓 Recent Past Events
                     </h2>

@@ -196,7 +196,7 @@ export default function EventDetail() {
                               background: "#fff",
                               borderRadius: "1.5rem",
                               zIndex: 0,
-                              boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
+                              boxShadow: "0 12px 36px rgba(255,255,255,0.28), 0 4px 12px rgba(255,255,255,0.18)",
                             }}
                           />
                           <div style={{ position: "relative", zIndex: 1 }}>
