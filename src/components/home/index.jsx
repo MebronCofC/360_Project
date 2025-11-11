@@ -60,11 +60,11 @@ const Home = () => {
             )}
 
             {/* Current Events Section */}
-            {currentEvents.length > 0 && (
-                <section className="mb-12">
-                    <h2 className="text-2xl font-semibold mb-4 bg-green-600 text-white rounded-lg px-6 py-3 inline-block">
-                        🔴 Live Now at TD Arena
-                    </h2>
+            <section className="mb-12">
+                <h2 className="text-2xl font-semibold mb-4 bg-green-600 text-white rounded-lg px-6 py-3 inline-block">
+                    🔴 Live Now at TD Arena
+                </h2>
+                {currentEvents.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
                         {currentEvents.map(ev => (
                             <div
@@ -92,8 +92,12 @@ const Home = () => {
                             </div>
                         ))}
                     </div>
-                </section>
-            )}
+                ) : (
+                    <div className="bg-white rounded-lg p-8 text-center text-gray-500 mt-4">
+                        No live games at the moment
+                    </div>
+                )}
+            </section>
 
             {/* Upcoming Events Section */}
             <section>
