@@ -97,12 +97,12 @@ export default function Events() {
 
   return (
     <div className="max-w-3xl mx-auto p-6 mt-12">
-      <h1 className="text-2xl font-semibold mb-8">TD Arena Events</h1>
+      <h1 className="text-2xl font-semibold mb-8 bg-white border border-gray-300 rounded-lg px-6 py-4 shadow-sm">TD Arena Events</h1>
 
       {isAdmin && (
         <div className="admin-card">
-          <h2 className="text-xl font-bold mb-4">Admin: Add or Remove Events</h2>
-          <form onSubmit={onAdd} className="grid grid-cols-2 gap-4 mb-6">
+          <h2 className="text-xl font-bold mb-4 text-black">Admin: Add or Remove Events</h2>
+          <form onSubmit={onAdd} className="grid grid-cols-2 gap-2 mb-6">
             <input name="title" placeholder="Title" className="px-3 py-2 rounded text-black bg-white col-span-2" />
             <textarea name="description" placeholder="Description (optional)" className="px-3 py-2 rounded text-black bg-white col-span-2 resize-y min-h-[80px]" />
             <input name="startTime" type="datetime-local" className="px-3 py-2 rounded text-black bg-white" />
@@ -110,13 +110,13 @@ export default function Events() {
             <input name="basePrice" placeholder="Base price" type="number" className="px-3 py-2 rounded text-black bg-white col-span-2" />
             <button type="submit" className="admin-btn col-span-2" style={{backgroundColor:'#7c3aed'}}>Add Event</button>
           </form>
-          <div className="text-sm mb-2">Remove events using the button next to each event below.</div>
+          <div className="text-sm mb-2 text-black">Remove events using the button next to each event below.</div>
         </div>
       )}
 
       <ul className="space-y-6">
         {events.map(ev => (
-          <li key={ev.id} className="border rounded-xl p-6 app-card mb-6" style={{background:'#fff1c9'}}>
+          <li key={ev.id} className="border rounded-xl p-6 app-card mb-6" style={{background:'#ffffffff'}}>
             <div className="flex items-start justify-between gap-4 mb-4">
               <div className="flex-1 min-w-0 pr-2">
                 <div className="font-medium text-lg mb-2 truncate">{ev.title}</div>
@@ -216,3 +216,4 @@ export default function Events() {
     </div>
   );
 }
+
