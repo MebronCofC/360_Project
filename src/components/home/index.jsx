@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/authContext'
 import { useNavigate } from 'react-router-dom'
 import { getEvents, getPastEvents, archiveFinishedEvents } from '../../data/events'
+import { getEventInventory } from '../../data/seatAssignments'
 
 const Home = () => {
     const { currentUser } = useAuth()
@@ -10,6 +11,8 @@ const Home = () => {
     const [currentEvents, setCurrentEvents] = useState([])
     const [loading, setLoading] = useState(true)
     const [pastEvents, setPastEvents] = useState([])
+    const [lowInventoryEventIds, setLowInventoryEventIds] = useState(new Set())
+    const [highDemandEventIds, setHighDemandEventIds] = useState(new Set())
     const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
     const scrollingImages = [
@@ -48,7 +51,28 @@ const Home = () => {
                     acc.set(ev.id || ev.eventId, ev)
                     return acc
                 }, new Map())
-                setPastEvents(Array.from(combined.values()).sort((a,b) => new Date(b.endTime || b.startTime) - new Date(a.endTime || a.startTime)).slice(0,6))
+                const pastEventsList = Array.from(combined.values()).sort((a,b) => new Date(b.endTime || b.startTime) - new Date(a.endTime || a.startTime)).slice(0,6)
+                setPastEvents(pastEventsList)
+                // Compute low inventory flags for currently active (current + upcoming) events only
+                const activeForInventory = [...current, ...upcoming];
+                const lowSet = new Set();
+                const highDemandSet = new Set();
+                for (const ev of activeForInventory) {
+                    try {
+                        const inventory = await getEventInventory(ev.id);
+                        if (inventory.lowInventorySections >= 2) { // multiple sections low
+                            lowSet.add(ev.id);
+                        }
+                        // Check if 14 or more sections are sold out
+                        if (inventory.soldOutSections && inventory.soldOutSections.length >= 14) {
+                            highDemandSet.add(ev.id);
+                        }
+                    } catch (e) {
+                        console.warn('Inventory check failed for event', ev.id, e);
+                    }
+                }
+                setLowInventoryEventIds(lowSet)
+                setHighDemandEventIds(highDemandSet)
             } catch (error) {
                 console.error('Error loading events:', error)
             } finally {
@@ -144,7 +168,18 @@ const Home = () => {
                                         <span className="w-3 h-3 bg-red-600 rounded-full animate-pulse"></span>
                                         <span className="text-sm font-bold text-green-700 uppercase">Live Now</span>
                                     </div>
-                                    <h3 className="text-xl font-bold mb-2 text-gray-900">{ev.title}</h3>
+                                    <h3 className="text-xl font-bold mb-2 text-gray-900 flex items-center justify-between">
+                                        <span>{ev.title}</span>
+                                        {highDemandEventIds.has(ev.id) ? (
+                                            <span className="ml-2 text-xs font-semibold bg-orange-600 text-white px-2 py-1 rounded-lg animate-pulse" title="14+ sections sold out">
+                                                Get your tickets soon! Seats are running out fast!
+                                            </span>
+                                        ) : lowInventoryEventIds.has(ev.id) ? (
+                                            <span className="ml-2 text-xs font-semibold bg-red-600 text-white px-2 py-1 rounded-lg animate-pulse" title="Multiple sections running low">
+                                                Seats Low!
+                                            </span>
+                                        ) : null}
+                                    </h3>
                                     {ev.description && (
                                         <p className="text-sm text-gray-600 mb-3 line-clamp-2">{ev.description}</p>
                                     )}
@@ -180,7 +215,18 @@ const Home = () => {
                                     onClick={() => handleEventClick(ev.id)}
                                     className="bg-white border border-gray-300 rounded-xl p-6 shadow-md hover:shadow-xl transition-all cursor-pointer transform hover:scale-105 hover:border-purple-500"
                                 >
-                                    <h3 className="text-xl font-bold mb-2 text-gray-900">{ev.title}</h3>
+                                    <h3 className="text-xl font-bold mb-2 text-gray-900 flex items-center justify-between">
+                                        <span>{ev.title}</span>
+                                        {highDemandEventIds.has(ev.id) ? (
+                                            <span className="ml-2 text-xs font-semibold bg-orange-600 text-white px-2 py-1 rounded-lg animate-pulse" title="14+ sections sold out">
+                                                Get your tickets soon! Seats are running out fast!
+                                            </span>
+                                        ) : lowInventoryEventIds.has(ev.id) ? (
+                                            <span className="ml-2 text-xs font-semibold bg-red-600 text-white px-2 py-1 rounded-lg animate-pulse" title="Multiple sections running low">
+                                                Seats Low!
+                                            </span>
+                                        ) : null}
+                                    </h3>
                                     {ev.description && (
                                         <p className="text-sm text-gray-600 mb-3 line-clamp-2">{ev.description}</p>
                                     )}

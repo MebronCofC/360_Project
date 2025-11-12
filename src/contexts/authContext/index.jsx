@@ -13,7 +13,8 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userLoggedIn, setUserLoggedIn] = useState(false);
   const [isEmailUser, setIsEmailUser] = useState(false);
-  const [isGoogleUser, setIsGoogleUser] = useState(false);
+  // Fixed: remove unused setter/state completely to silence ESLint
+  const isGoogleUser = false;
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -32,11 +33,7 @@ export function AuthProvider({ children }) {
       );
       setIsEmailUser(isEmail);
 
-      // check if the auth provider is google or not
-      // const isGoogle = user.providerData.some(
-      //     (provider) => provider.providerId === GoogleAuthProvider.PROVIDER_ID
-      // );
-      // setIsGoogleUser(isGoogle);
+  // Google provider detection removed (state unused) – add back if enabling Google auth.
 
       setUserLoggedIn(true);
       // admin detection (normalize emails to avoid case/whitespace mismatches)

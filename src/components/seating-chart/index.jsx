@@ -1,8 +1,48 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getEventInventory } from "../../data/seatAssignments";
 
 export default function InteractiveSeatingChart({ eventId }) {
   const navigate = useNavigate();
+  const [soldOutSections, setSoldOutSections] = useState(new Set());
+  const [unavailableSections, setUnavailableSections] = useState(new Set());
+
+  // Load sold-out sections for this event so we can change labels on the chart
+  useEffect(() => {
+    let cancelled = false;
+    async function loadInventory() {
+      try {
+        if (!eventId) return;
+        const inv = await getEventInventory(eventId);
+        const so = new Set((inv?.soldOutSections || []).map(String));
+        const fu = new Set((inv?.fullyUnavailableSections || []).map(String));
+        if (!cancelled) {
+          setSoldOutSections(so);
+          setUnavailableSections(fu);
+        }
+      } catch (e) {
+        console.error("Failed to load inventory for seating chart", e);
+      }
+    }
+    loadInventory();
+    return () => { cancelled = true; };
+  }, [eventId]);
+
+  // Periodically refresh inventory so all users see updates in near real-time
+  useEffect(() => {
+    let active = true;
+    const tick = async () => {
+      try {
+        if (!eventId || !active) return;
+        const inv = await getEventInventory(eventId);
+        if (!active) return;
+        setSoldOutSections(new Set((inv?.soldOutSections || []).map(String)));
+        setUnavailableSections(new Set((inv?.fullyUnavailableSections || []).map(String)));
+      } catch {}
+    };
+    const id = setInterval(tick, 3000);
+    return () => { active = false; clearInterval(id); };
+  }, [eventId]);
 
   const handleSectionClick = (sectionNumber) => {
     // Navigate to event detail page with section parameter
@@ -73,24 +113,35 @@ export default function InteractiveSeatingChart({ eventId }) {
         />
         
         {/* Clickable Section Overlays with Purple Boxes */}
-        {sections.map((section, idx) => (
-          <button
-            key={idx}
-            onClick={() => handleSectionClick(section.number || section.label)}
-            className="absolute bg-purple-600 bg-opacity-70 hover:bg-opacity-90 transition-all rounded cursor-pointer border-2 border-white flex items-center justify-center text-white font-bold hover:scale-110"
-            style={{
-              left: section.left,
-              top: section.top,
-              width: section.width,
-              height: section.height,
-              fontSize: section.special ? '0.6rem' : '0.8rem',
-            }}
-            title={section.special ? section.label : `Section ${section.number}`}
-            aria-label={section.special ? section.label : `Click to select seats in section ${section.number}`}
-          >
-            {section.number || section.label}
-          </button>
-        ))}
+        {sections.map((section, idx) => {
+          const sectionId = String(section.number || section.label);
+          const isFullyUnavailable = unavailableSections.has(sectionId);
+          const isSoldOut = soldOutSections.has(sectionId);
+          let label = section.number || section.label;
+          if (isFullyUnavailable || isSoldOut) label = "No More Seats Available";
+          return (
+            <button
+              key={idx}
+              onClick={() => (!isSoldOut && !isFullyUnavailable) && handleSectionClick(section.number || section.label)}
+              disabled={isSoldOut || isFullyUnavailable}
+              className={`absolute transition-all rounded border-2 border-white flex items-center justify-center font-bold hover:scale-110 
+                ${isFullyUnavailable ? 'bg-gray-500 bg-opacity-90 cursor-not-allowed text-white' : isSoldOut ? 'bg-gray-400 bg-opacity-90 cursor-not-allowed text-gray-900' : 'bg-purple-600 bg-opacity-70 hover:bg-opacity-90 cursor-pointer text-white'}`}
+              style={{
+                left: section.left,
+                top: section.top,
+                width: section.width,
+                height: section.height,
+                fontSize: (isSoldOut || isFullyUnavailable) ? '0.62rem' : (section.special ? '0.6rem' : '0.8rem'),
+                textAlign: 'center',
+                padding: '4px'
+              }}
+              title={isFullyUnavailable ? 'Seats are unavailable' : isSoldOut ? 'No More Seats Available' : (section.special ? section.label : `Section ${section.number}`)}
+              aria-label={isFullyUnavailable ? 'This section has been marked unavailable' : isSoldOut ? 'This section is sold out' : (section.special ? section.label : `Click to select seats in section ${section.number}`)}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       

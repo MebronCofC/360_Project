@@ -1,16 +1,15 @@
 import React, { useState } from 'react'
-import { Navigate, Link, useNavigate } from 'react-router-dom'
+import { Navigate, Link } from 'react-router-dom'
 import { useAuth } from '../../../contexts/authContext'
 import { doCreateUserWithEmailAndPassword } from '../../../firebase/auth.js'
 
 const Register = () => {
 
-    const navigate = useNavigate()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setconfirmPassword] = useState('')
     const [isRegistering, setIsRegistering] = useState(false)
-    const [errorMessage, setErrorMessage] = useState('')
+    // Track and show errors later if needed
 
     const { userLoggedIn } = useAuth()
 
@@ -79,9 +78,7 @@ const Register = () => {
                             />
                         </div>
 
-                        {errorMessage && (
-                            <span className='text-red-600 font-bold'>{errorMessage}</span>
-                        )}
+                        {/* Add error message UI when wiring form validation */}
 
                         <button
                             type="submit"
@@ -101,4 +98,5 @@ const Register = () => {
     )
 }
 
-export default Register
+// If routing needed later, add useNavigate and call navigate('/events')
+export default Register;

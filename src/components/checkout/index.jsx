@@ -61,9 +61,19 @@ export default function Checkout() {
 
   // 3) assign seats to this user
   try {
-  await assignSeats(pending.eventId, pending.seats, ownerUid, ticketIdBySeat, pending.eventTitle, pending.startTime, pending.endTime || null);
+    await assignSeats(
+      pending.eventId, 
+      pending.seats, 
+      ownerUid, 
+      ticketIdBySeat, 
+      pending.eventTitle, 
+      pending.startTime, 
+      pending.endTime || null,
+      currentUser?.email || null,
+      currentUser?.displayName || currentUser?.email || null
+    );
     localStorage.removeItem("pendingOrder");
-    setOrderId(newOrderId);
+  setOrderId(newOrderId);
     setSaved(true);
     
     // Load the newly created tickets from Firestore
@@ -97,6 +107,9 @@ export default function Checkout() {
       ) : (
         <div className="space-y-4">
           <div className="text-emerald-700 font-medium">Purchase complete — tickets issued.</div>
+          {orderId && (
+            <div className="text-xs text-gray-500">Order ID: {orderId}</div>
+          )}
           <div className="text-sm text-gray-600">Example QR payload (one per seat):</div>
           <div className="grid grid-cols-2 gap-3">
             {purchasedTickets.map(t => (

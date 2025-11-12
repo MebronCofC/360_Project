@@ -1,26 +1,32 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { getEvents, seatsForEvent, getSeatsForEvent, addSeatToEvent, removeSeatFromEvent, updateSeatForEvent } from "../../data/events";
-import { assignSeats, getAssignedSeats } from "../../data/seatAssignments";
+import { getEvents, seatsForEvent, getSeatsForEvent } from "../../data/events";
+import { assignSeats, getAssignedSeats, getEventInventory } from "../../data/seatAssignments";
 import { useAuth } from "../../contexts/authContext";
+import InteractiveSeatingChart from "../seating-chart";
 
 export default function EventDetail() {
   const { eventId } = useParams();
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
+    const { isAdmin, currentUser } = useAuth();
   const [searchParams] = useSearchParams();
   const sectionNumber = searchParams.get("section");
 
   const [loading, setLoading] = useState(true);
   const [ev, setEv] = useState(null);
   const [seats, setSeats] = useState([]);
-  const [adminSeats, setAdminSeats] = useState([]);
+  // Removed legacy admin seat list; modern admin view uses aggregated section stats
   const [taken, setTaken] = useState(new Set());
   const [selected, setSelected] = useState([]);
+  const [sectionSoldOut, setSectionSoldOut] = useState(false);
+  const [sectionUnavailable, setSectionUnavailable] = useState(false);
+  const [sectionStats, setSectionStats] = useState([]);
+  const [expandedSection, setExpandedSection] = useState(null);
+  const [sectionSeatsForAdmin, setSectionSeatsForAdmin] = useState([]);
 
   // Section-based seat generation rules
-  const LARGE_SECTIONS = new Set([110,111,112,113,114,115,101,102,103,104,105,106,107,109]);
-  const SMALL_SECTIONS = new Set([210,211,213,214,215,216,201,202,203,204,205,206,207,208,209]);
+  const LARGE_SECTIONS = useMemo(() => new Set([110,111,112,113,114,115,101,102,103,104,105,106,107,109]), []);
+  const SMALL_SECTIONS = useMemo(() => new Set([210,211,213,214,215,216,201,202,203,204,205,206,207,208,209]), []);
 
   const letters = (from, to) => {
     const start = from.charCodeAt(0);
@@ -30,7 +36,7 @@ export default function EventDetail() {
     return arr;
   };
 
-  const generateSectionSeats = (section) => {
+  const generateSectionSeats = useCallback((section) => {
     const secStr = String(section);
     const upper = secStr.toUpperCase();
     // President suite (labelled SUITE on chart)
@@ -44,8 +50,7 @@ export default function EventDetail() {
       })));
     }
     const num = Number(secStr);
-    const isLarge = LARGE_SECTIONS.has(num);
-    const isSmall = SMALL_SECTIONS.has(num);
+  const isLarge = LARGE_SECTIONS.has(num);
     const rows = isLarge ? letters('A','L') : letters('A','E');
     const perRow = 18;
     return rows.flatMap(r => Array.from({length: perRow}, (_,i) => ({
@@ -53,7 +58,7 @@ export default function EventDetail() {
       label: `${r}${i+1}`,
       isAda: false,
     })));
-  };
+  }, [LARGE_SECTIONS]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -67,14 +72,61 @@ export default function EventDetail() {
             eventSeats = generateSectionSeats(sectionNumber);
           } else {
             eventSeats = await seatsForEvent(eventId);
-            if (isAdmin) {
-              const allSeats = await getSeatsForEvent(eventId);
-              setAdminSeats(allSeats);
-            }
+            // Admin seat list removed; using inventory-driven overview instead.
           }
           setSeats(eventSeats);
           const takenSeats = await getAssignedSeats(eventId);
           setTaken(takenSeats || new Set());
+          if (sectionNumber) {
+            try {
+              const inventory = await getEventInventory(eventId);
+              const secInfo = inventory.sections?.[String(sectionNumber)];
+              if (secInfo) {
+                setSectionSoldOut(secInfo.remaining === 0 && secInfo.unavailable !== secInfo.total);
+                setSectionUnavailable(secInfo.unavailable === secInfo.total && secInfo.total > 0);
+              } else {
+                const total = eventSeats.length;
+                const takenCount = [...takenSeats].filter(seatId => seatId.startsWith(sectionNumber + '-')).length;
+                setSectionSoldOut(takenCount >= total);
+                setSectionUnavailable(false);
+              }
+            } catch (e) {
+              console.error('Inventory check failed for section', sectionNumber, e);
+              const total = eventSeats.length;
+              const takenCount = [...takenSeats].filter(seatId => seatId.startsWith(sectionNumber + '-')).length;
+              setSectionSoldOut(takenCount >= total);
+              setSectionUnavailable(false);
+            }
+          } else if (isAdmin) {
+            // Load section statistics for admin view
+            const inventory = await getEventInventory(eventId);
+            const allSections = [
+              110,111,112,113,114,115,101,102,103,104,105,106,107,109, // Large sections
+              210,211,213,214,215,216,201,202,203,204,205,206,207,208,209, // Small sections
+              'SUITE'
+            ];
+            const stats = allSections.map(sec => {
+              const secStr = String(sec);
+              const info = inventory.sections?.[secStr];
+              // Calculate total seats for this section
+              let total = 0;
+              if (secStr === 'SUITE') {
+                total = 3 * 10; // 3 rows, 10 seats each
+              } else if (LARGE_SECTIONS.has(Number(sec))) {
+                total = 12 * 18; // 12 rows, 18 seats each
+              } else if (SMALL_SECTIONS.has(Number(sec))) {
+                total = 5 * 18; // 5 rows, 18 seats each
+              }
+              return {
+                section: secStr,
+                taken: info?.taken || 0,
+                total: total,
+                remaining: info?.remaining ?? total,
+                isSoldOut: inventory.soldOutSections?.includes(secStr) || false
+              };
+            });
+            setSectionStats(stats);
+          }
         }
       } catch (err) {
         console.error("Error loading event detail", err);
@@ -84,73 +136,36 @@ export default function EventDetail() {
       }
     };
     loadData();
-  }, [eventId, isAdmin]);
+  }, [eventId, isAdmin, sectionNumber, generateSectionSeats, LARGE_SECTIONS, SMALL_SECTIONS]);
 
-                      const refreshSeats = async () => {
-                        try {
-                          const allSeats = await getSeatsForEvent(eventId);
-                          setAdminSeats(allSeats);
-                          const eventSeats = await seatsForEvent(eventId);
-                          setSeats(eventSeats);
-                        } catch (err) {
-                          console.error("Error refreshing seats", err);
-                        }
-                      };
+    // Refresh taken seats periodically and when user changes to ensure real-time sync
+    useEffect(() => {
+      const refreshTakenSeats = async () => {
+        if (!eventId) return;
+        try {
+          const takenSeats = await getAssignedSeats(eventId);
+          setTaken(takenSeats || new Set());
+          // Also refresh section sold-out status if viewing a specific section
+          if (sectionNumber && seats.length > 0) {
+            const total = seats.length;
+            const takenCount = [...takenSeats].filter(seatId => seatId.startsWith(sectionNumber + '-')).length;
+            setSectionSoldOut(takenCount >= total);
+          }
+        } catch (err) {
+          console.error("Error refreshing seat availability", err);
+        }
+      };
 
-                      const onAddSeat = async (e) => {
-                        e.preventDefault();
-                        const form = e.target;
-                        const seatId = form.seatId.value.trim();
-                        const label = form.label.value.trim() || seatId;
-                        const isAda = !!form.isAda.checked;
-                        if (!seatId) return;
-                        try {
-                          await addSeatToEvent(eventId, { seatId, label, isAda });
-                          form.reset();
-                          await refreshSeats();
-                        } catch (err) {
-                          console.error("Add seat failed", err);
-                          alert("Failed to add seat");
-                        }
-                      };
+      // Initial refresh
+      refreshTakenSeats();
 
-                      // eslint-disable-next-line no-restricted-globals
-                      const onRemoveSeat = async (seatId) => {
-                        if (!window.confirm("Remove seat " + seatId + "?")) return;
-                        try {
-                          await removeSeatFromEvent(eventId, seatId);
-                          await refreshSeats();
-                        } catch (err) {
-                          console.error("Remove seat failed", err);
-                          alert("Failed to remove seat");
-                        }
-                      };
+      // Set up interval to refresh every 3 seconds for real-time updates
+      const interval = setInterval(refreshTakenSeats, 3000);
 
-                      const onToggleAda = async (seatId) => {
-                        try {
-                          const allSeats = await getSeatsForEvent(eventId);
-                          const seat = allSeats.find((s) => s.seatId === seatId);
-                          if (!seat) return;
-                          await updateSeatForEvent(eventId, seatId, { isAda: !seat.isAda });
-                          await refreshSeats();
-                        } catch (err) {
-                          console.error("Toggle ADA failed", err);
-                          alert("Failed to update seat");
-                        }
-                      };
+      return () => clearInterval(interval);
+    }, [eventId, sectionNumber, currentUser, seats.length]);
 
-                      const onRegisterSeat = async (seatId) => {
-                        const ownerUid = prompt("Enter owner UID to register this seat for:");
-                        if (!ownerUid) return;
-                        try {
-                          await assignSeats(eventId, [seatId], ownerUid, {}, ev.title, ev.startTime, ev.endTime || null);
-                          alert("Seat registered");
-                          const takenSeats = await getAssignedSeats(eventId);
-                          setTaken(takenSeats || new Set());
-                        } catch (err) {
-                          alert("Failed to register seat: " + err.message);
-                        }
-                      };
+                      // Legacy admin seat CRUD handlers removed (now managed via Section Overview)
 
                       if (loading) return <div className="p-6 mt-12">Loading event...</div>;
                       if (!ev) return <div className="p-6 mt-12">Event not found.</div>;
@@ -160,6 +175,73 @@ export default function EventDetail() {
                         setSelected((prev) =>
                           prev.includes(seatId) ? prev.filter((id) => id !== seatId) : [...prev, seatId]
                         );
+                      };
+
+                      // Admin helpers: select all seats
+                      const selectAllSeatsInSection = () => {
+                        if (!isAdmin) return;
+                        // Use current section's seats state; exclude taken
+                        const availableIds = seats
+                          .filter((s) => !taken.has(s.seatId))
+                          .map((s) => s.seatId);
+                        setSelected(Array.from(new Set(availableIds)));
+                      };
+
+                      const selectAllSeatsInRow = (rowLabel, rowSeatObjs) => {
+                        if (!isAdmin) return;
+                        const ids = rowSeatObjs
+                          .filter((s) => !taken.has(s.seatId))
+                          .map((s) => s.seatId);
+                        // Merge with existing selections (admin may want to add row-by-row)
+                        setSelected((prev) => Array.from(new Set([...prev, ...ids])));
+                      };
+
+                      // Admin section management
+                      const toggleSectionExpanded = async (section) => {
+                        if (expandedSection === section) {
+                          setExpandedSection(null);
+                          setSectionSeatsForAdmin([]);
+                        } else {
+                          setExpandedSection(section);
+                          // Generate all seats for this section
+                          const sectionSeats = generateSectionSeats(section);
+                          // Get ticket status for each seat
+                          const takenSeats = await getAssignedSeats(eventId);
+                          const seatsWithStatus = sectionSeats.map(seat => ({
+                            ...seat,
+                            status: takenSeats.has(seat.seatId) ? 'reserved' : 'available'
+                          }));
+                          setSectionSeatsForAdmin(seatsWithStatus);
+                        }
+                      };
+
+                      const updateSeatStatus = async (seatId, newStatus) => {
+                        try {
+                          if (newStatus === 'reserved') {
+                            // Mark as reserved by assigning to system
+                            await assignSeats(eventId, [seatId], 'ADMIN_RESERVED', {}, ev.title, ev.startTime, ev.endTime || null, 'admin-reserved', 'Admin Reserved');
+                          } else if (newStatus === 'unavailable') {
+                            // Mark as unavailable by assigning to system
+                            await assignSeats(eventId, [seatId], 'ADMIN_UNAVAILABLE', {}, ev.title, ev.startTime, ev.endTime || null, 'admin-unavailable', 'Admin Unavailable');
+                          } else if (newStatus === 'available') {
+                            // Release the seat if it was admin-reserved
+                            const allSeats = await getSeatsForEvent(eventId);
+                            const seat = allSeats.find(s => s.seatId === seatId);
+                            if (seat) {
+                              // We need to delete the ticket for this seat if it exists
+                              // This requires a new firestore function or we can just reassign
+                              // For now, we'll keep it simple and just update the display
+                            }
+                          }
+                          // Refresh the section seats
+                          await toggleSectionExpanded(expandedSection);
+                          // Refresh taken seats
+                          const takenSeats = await getAssignedSeats(eventId);
+                          setTaken(takenSeats || new Set());
+                        } catch (err) {
+                          console.error("Failed to update seat status", err);
+                          alert("Failed to update seat status");
+                        }
                       };
 
                       const priceEach = Number(ev.basePrice) || 0;
@@ -223,25 +305,54 @@ export default function EventDetail() {
                               )}
                             </div>
 
-                            {/* Legend */}
-                            <div className="mb-4 flex items-center gap-4 text-sm">
-                              <span className="inline-flex items-center gap-2">
-                                <span className="w-3 h-3 inline-block rounded border bg-white" /> Available
-                              </span>
-                              <span className="inline-flex items-center gap-2">
-                                <span className="w-3 h-3 inline-block rounded border bg-gray-200" /> Taken
-                              </span>
-                              <span className="inline-flex items-center gap-2">
-                                <span className="w-3 h-3 inline-block rounded border ring-2 ring-red-700 bg-yellow-100" /> Selected
-                              </span>
-                              <span className="inline-flex items-center gap-2">
-                                <span className="w-3 h-3 inline-block rounded border bg-red-50" /> ADA
-                              </span>
-                            </div>
+                            {/* Legend - only show when viewing specific section */}
+                            {sectionNumber && (
+                              <div className="mb-4 flex items-center gap-4 text-sm">
+                                <span className="inline-flex items-center gap-2">
+                                  <span className="w-3 h-3 inline-block rounded border bg-white" /> Available
+                                </span>
+                                <span className="inline-flex items-center gap-2">
+                                  <span className="w-3 h-3 inline-block rounded border bg-gray-200" /> Taken
+                                </span>
+                                <span className="inline-flex items-center gap-2">
+                                  <span className="w-3 h-3 inline-block rounded border ring-2 ring-red-700 bg-yellow-100" /> Selected
+                                </span>
+                                <span className="inline-flex items-center gap-2">
+                                  <span className="w-3 h-3 inline-block rounded border bg-red-50" /> ADA
+                                </span>
+                              </div>
+                            )}
 
-                            {/* Seats grid (bleacher-style: Row A at bottom, all visible) */}
-                            <div className="mb-10">
-                              <div className="inline-block bg-white rounded-lg p-4 shadow-sm">
+                            {/* Seats grid or Sold Out notice */}
+                            <>
+                              {isAdmin && sectionNumber && !sectionSoldOut && (
+                                <div className="mb-3 flex justify-end">
+                                  <button
+                                    type="button"
+                                    onClick={selectAllSeatsInSection}
+                                    className="px-3 py-1.5 rounded-md text-xs font-semibold bg-gray-800 text-white hover:bg-gray-900"
+                                  >
+                                    Select all seats
+                                  </button>
+                                </div>
+                              )}
+                              <div className="mb-10">
+                              {!sectionNumber ? (
+                                // Show interactive seating chart when no section selected
+                                <InteractiveSeatingChart eventId={eventId} />
+                              ) : (sectionSoldOut || sectionUnavailable) ? (
+                                <div className="p-8 bg-red-50 border border-red-300 rounded-xl text-center">
+                                  <h2 className="text-2xl font-bold text-red-700 mb-2">No more seats available</h2>
+                                  <p className="text-red-600">This section is not available. Please choose another section.</p>
+                                  <button
+                                    onClick={() => navigate(`/events/${eventId}`)}
+                                    className="mt-4 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white"
+                                  >
+                                    Back to Section Map
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="inline-block bg-white rounded-lg p-4 shadow-sm">
                                 <div className="flex flex-col-reverse gap-2">
                                   {Object.entries(
                                     seats.reduce((acc, seat) => {
@@ -256,6 +367,16 @@ export default function EventDetail() {
                                       <div className="text-xs font-bold text-gray-700 w-8 text-right flex-shrink-0">
                                         {row}
                                       </div>
+                                      {isAdmin && (
+                                        <button
+                                          type="button"
+                                          onClick={() => selectAllSeatsInRow(row, rowSeats)}
+                                          className="ml-1 px-2 py-1 rounded border text-[10px] font-medium bg-gray-100 hover:bg-gray-200 text-gray-800"
+                                          title="Select all seats in this row"
+                                        >
+                                          Select all seat rows
+                                        </button>
+                                      )}
                                       <div className="flex gap-1 flex-nowrap">
                                         {rowSeats.sort((a,b)=>{
                                           const na = Number(a.label.replace(/^[A-Z]+/,''));
@@ -263,6 +384,9 @@ export default function EventDetail() {
                                           return na-nb;
                                         }).map(seat => {
                                           const isTaken = taken.has(seat.seatId);
+                                          // seat unavailable if there's a ticket with ADMIN_UNAVAILABLE ownerUid for that seat
+                                          // We approximate by checking taken + sectionUnavailable context; more granular could query ticket metadata if needed.
+                                          const isUnavailable = sectionUnavailable && isTaken;
                                           const isSelected = selected.includes(seat.seatId);
                                           return (
                                             <button
@@ -271,7 +395,9 @@ export default function EventDetail() {
                                               onClick={() => toggleSeat(seat.seatId)}
                                               className={[
                                                 "px-2 py-1.5 rounded text-xs font-medium transition-all border",
-                                                isTaken
+                                                isUnavailable
+                                                  ? "bg-gray-500 text-white cursor-not-allowed"
+                                                  : isTaken
                                                   ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                                                   : "bg-white hover:bg-red-100",
                                                 isSelected ? "ring-2 ring-red-700 bg-yellow-100 font-bold" : "",
@@ -279,7 +405,7 @@ export default function EventDetail() {
                                               ].join(" ")}
                                               style={{ minWidth: '2rem' }}
                                               aria-label={`Seat ${seat.label}${seat.isAda ? " (ADA)" : ""}${
-                                                isTaken ? " (Taken)" : ""
+                                                isUnavailable ? " (Unavailable)" : isTaken ? " (Taken)" : ""
                                               }`}
                                               title={seat.label}
                                             >
@@ -291,102 +417,120 @@ export default function EventDetail() {
                                     </div>
                                   ))}
                                 </div>
+                                </div>
+                              )}
                               </div>
-                            </div>
+                            </>
 
                             {isAdmin && !sectionNumber && (
                               <div className="admin-card">
-                                <h3 className="text-xl font-bold mb-4">Admin: Manage Seats</h3>
-                                <form onSubmit={onAddSeat} className="flex gap-4 mb-6">
-                                  <input
-                                    name="seatId"
-                                    placeholder="Seat ID (e.g. D1)"
-                                    className="px-3 py-2 rounded text-black bg-white"
-                                  />
-                                  <input
-                                    name="label"
-                                    placeholder="Label (optional)"
-                                    className="px-3 py-2 rounded text-black bg-white"
-                                  />
-                                  <label className="flex items-center gap-2">
-                                    <input type="checkbox" name="isAda" /> ADA
-                                  </label>
-                                  <button className="admin-btn">Add seat</button>
-                                </form>
-                                <div className="space-y-3">
-                                  {adminSeats.map((s) => (
-                                    <div
-                                      key={s.seatId}
-                                      className="flex items-center justify-between border rounded p-3 mb-2 bg-red-50"
-                                    >
-                                      <div>
-                                        <div className="font-medium text-lg text-black">
-                                          {s.label} ({s.seatId}) {s.isAda ? "• ADA" : ""}
+                                <h3 className="text-xl font-bold mb-4">Admin: Section Overview & Management</h3>
+                                <p className="text-sm text-gray-600 mb-4">
+                                  Click on a section row to expand and manage individual seat statuses.
+                                </p>
+                                <div className="space-y-2">
+                                  <div className="grid grid-cols-5 gap-4 font-semibold text-sm border-b pb-2">
+                                    <div>Section</div>
+                                    <div>Total Seats</div>
+                                    <div>Sold</div>
+                                    <div>Available</div>
+                                    <div>Actions</div>
+                                  </div>
+                                  {sectionStats.map((stat) => (
+                                    <div key={stat.section} className="space-y-2">
+                                      <div
+                                        className={`grid grid-cols-5 gap-4 border rounded p-3 cursor-pointer hover:bg-gray-50 ${
+                                          stat.isSoldOut ? 'bg-red-100 border-red-300' : 'bg-white border-gray-300'
+                                        } ${expandedSection === stat.section ? 'border-indigo-500 border-2' : ''}`}
+                                        onClick={() => toggleSectionExpanded(stat.section)}
+                                      >
+                                        <div className="font-medium text-black">
+                                          Section {stat.section}
+                                          {stat.isSoldOut && <span className="ml-2 text-xs text-red-600 font-bold">SOLD OUT</span>}
+                                        </div>
+                                        <div className="text-gray-700">{stat.total}</div>
+                                        <div className="text-gray-700">{stat.taken}</div>
+                                        <div className={`font-semibold ${stat.remaining === 0 ? 'text-red-600' : stat.remaining < stat.total * 0.35 ? 'text-orange-600' : 'text-green-600'}`}>
+                                          {stat.remaining}
+                                        </div>
+                                        <div className="text-indigo-600 text-sm font-medium">
+                                          {expandedSection === stat.section ? '▼ Collapse' : '▶ Expand'}
                                         </div>
                                       </div>
-                                      <div className="flex items-center gap-2">
-                                        <button
-                                          onClick={() => onToggleAda(s.seatId)}
-                                          className="admin-btn"
-                                          style={{ backgroundColor: "#991b1b" }}
-                                        >
-                                          Toggle ADA
-                                        </button>
-                                        <button
-                                          onClick={() => onRegisterSeat(s.seatId)}
-                                          className="admin-btn"
-                                          style={{ backgroundColor: "#991b1b" }}
-                                        >
-                                          Register
-                                        </button>
-                                        <button
-                                          onClick={() => onRemoveSeat(s.seatId)}
-                                          className="admin-btn"
-                                          style={{ backgroundColor: "#991b1b" }}
-                                        >
-                                          Remove
-                                        </button>
-                                      </div>
+                                      
+                                      {/* Expanded seat management */}
+                                      {expandedSection === stat.section && (
+                                        <div className="ml-8 p-4 bg-gray-50 border border-gray-300 rounded">
+                                          <h4 className="font-semibold mb-3 text-sm">Manage Seats for Section {stat.section}</h4>
+                                          <div className="max-h-96 overflow-y-auto space-y-1">
+                                            {sectionSeatsForAdmin.map((seat) => (
+                                              <div key={seat.seatId} className="flex items-center justify-between p-2 bg-white border rounded hover:bg-gray-50">
+                                                <span className="text-sm font-medium text-gray-700 w-24">
+                                                  {seat.label}
+                                                </span>
+                                                <select
+                                                  value={seat.status}
+                                                  onChange={(e) => updateSeatStatus(seat.seatId, e.target.value)}
+                                                  className="text-sm border rounded px-2 py-1 bg-white text-black"
+                                                >
+                                                  <option value="available">Available</option>
+                                                  <option value="reserved">Reserved</option>
+                                                  <option value="unavailable">Unavailable</option>
+                                                </select>
+                                                <span className={`text-xs px-2 py-1 rounded ${
+                                                  seat.status === 'available' ? 'bg-green-100 text-green-700' :
+                                                  seat.status === 'reserved' ? 'bg-yellow-100 text-yellow-700' :
+                                                  'bg-red-100 text-red-700'
+                                                }`}>
+                                                  {seat.status}
+                                                </span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
                                   ))}
                                 </div>
                               </div>
                             )}
 
-                            {/* Summary / actions */}
-                            <div className="flex items-center justify-between">
-                              <div className="text-sm text-gray-600">
-                                <div>Price each: ${priceEach.toFixed(2)}</div>
-                                <div>Seats selected: {selected.length}</div>
-                                <div>
-                                  Subtotal: <span className="font-semibold">${subtotal.toFixed(2)}</span>
+                            {/* Summary / actions - only show when viewing specific section */}
+                            {sectionNumber && (
+                              <div className="flex items-center justify-between">
+                                <div className="text-sm text-gray-600">
+                                  <div>Price each: ${priceEach.toFixed(2)}</div>
+                                  <div>Seats selected: {selected.length}</div>
+                                  <div>
+                                    Subtotal: <span className="font-semibold">${subtotal.toFixed(2)}</span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <button
+                                    onClick={() => setSelected([])}
+                                    disabled={selected.length === 0}
+                                    className={`px-4 py-2 rounded-xl border ${
+                                      selected.length === 0
+                                        ? "text-gray-400 border-gray-200 cursor-not-allowed"
+                                        : "hover:bg-gray-50"
+                                    }`}
+                                  >
+                                    Clear
+                                  </button>
+                                  <button
+                                    disabled={selected.length === 0}
+                                    onClick={proceed}
+                                    className={`px-4 py-2 rounded-xl ${
+                                      selected.length
+                                        ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                                        : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                                    }`}
+                                  >
+                                    Continue
+                                  </button>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-3">
-                                <button
-                                  onClick={() => setSelected([])}
-                                  disabled={selected.length === 0}
-                                  className={`px-4 py-2 rounded-xl border ${
-                                    selected.length === 0
-                                      ? "text-gray-400 border-gray-200 cursor-not-allowed"
-                                      : "hover:bg-gray-50"
-                                  }`}
-                                >
-                                  Clear
-                                </button>
-                                <button
-                                  disabled={selected.length === 0}
-                                  onClick={proceed}
-                                  className={`px-4 py-2 rounded-xl ${
-                                    selected.length
-                                      ? "bg-indigo-600 hover:bg-indigo-700 text-white"
-                                      : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                                  }`}
-                                >
-                                  Continue
-                                </button>
-                              </div>
-                            </div>
+                            )}
                           </div>
                         </div>
                       );

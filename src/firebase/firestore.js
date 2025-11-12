@@ -10,9 +10,37 @@ import {
   query, 
   where,
   serverTimestamp,
-  writeBatch
+  writeBatch,
+  increment
 } from "firebase/firestore";
 import { db } from "./firebase";
+
+// ================ PUBLIC INVENTORY (AGGREGATED) HELPERS =================
+// Read aggregated event inventory (public)
+export async function getEventInventoryDocFromDB(eventId) {
+  try {
+    const invRef = doc(db, "eventInventories", eventId);
+    const snap = await getDoc(invRef);
+    if (!snap.exists()) return null;
+    return snap.data();
+  } catch (e) {
+    console.error("Failed to read event inventory doc", e);
+    return null;
+  }
+}
+
+function totalSeatsForSectionRaw(sectionId) {
+  const secStr = String(sectionId).toUpperCase();
+  if (secStr.includes("SUITE")) return 3 * 10; // Rows A-C, 10 seats
+  const num = Number(secStr);
+  const LARGE = new Set([110,111,112,113,114,115,101,102,103,104,105,106,107,109]);
+  const SMALL = new Set([210,211,213,214,215,216,201,202,203,204,205,206,207,208,209]);
+  if (!Number.isNaN(num)) {
+    if (LARGE.has(num)) return 12 * 18;
+    if (SMALL.has(num)) return 5 * 18;
+  }
+  return 0;
+}
 
 // ==================== EVENTS ====================
 
@@ -308,7 +336,7 @@ export async function checkSeatsAvailability(eventId, seatIds) {
 }
 
 // Assign seats (create tickets)
-export async function assignSeatsInDB(eventId, seatIds, ownerUid, eventTitle, startTime, endTime = null) {
+export async function assignSeatsInDB(eventId, seatIds, ownerUid, eventTitle, startTime, endTime = null, userEmail = null, userName = null) {
   try {
     // Check availability first
     const unavailable = await checkSeatsAvailability(eventId, seatIds);
@@ -320,6 +348,7 @@ export async function assignSeatsInDB(eventId, seatIds, ownerUid, eventTitle, st
     const orderId = `ord_${Math.random().toString(36).slice(2, 10)}`;
     const batch = writeBatch(db);
     const ticketsCol = collection(db, "tickets");
+    const sectionDeltas = {};
     
     seatIds.forEach(seatId => {
       const ticketId = `t_${Math.random().toString(36).slice(2, 10)}`;
@@ -327,6 +356,8 @@ export async function assignSeatsInDB(eventId, seatIds, ownerUid, eventTitle, st
       batch.set(ticketRef, {
         orderId,
         ownerUid,
+        ownerEmail: userEmail || null,
+        ownerName: userName || null,
         eventId,
         eventTitle,
         startTime,
@@ -336,7 +367,28 @@ export async function assignSeatsInDB(eventId, seatIds, ownerUid, eventTitle, st
         status: "Issued",
         createdAt: serverTimestamp()
       });
+
+      const section = String(seatId).split('-')[0];
+      if (!sectionDeltas[section]) sectionDeltas[section] = { taken: 0, unavailable: 0 };
+      if (String(ownerUid).toUpperCase() === 'ADMIN_UNAVAILABLE') {
+        sectionDeltas[section].unavailable += 1;
+      } else {
+        sectionDeltas[section].taken += 1;
+      }
     });
+
+    // Write aggregated public inventory updates
+    if (Object.keys(sectionDeltas).length) {
+      const invRef = doc(db, "eventInventories", eventId);
+      const updates = {};
+      for (const [section, delta] of Object.entries(sectionDeltas)) {
+        updates[`sections.${section}.taken`] = increment(delta.taken);
+        updates[`sections.${section}.unavailable`] = increment(delta.unavailable);
+        updates[`sections.${section}.total`] = totalSeatsForSectionRaw(section);
+        updates[`updatedAt`] = serverTimestamp();
+      }
+      batch.set(invRef, updates, { merge: true });
+    }
     
     await batch.commit();
     return orderId;
@@ -359,7 +411,23 @@ export async function releaseSeatInDB(eventId, seatId, ownerUid) {
     const snapshot = await getDocs(q);
     
     if (!snapshot.empty) {
-      await deleteDoc(snapshot.docs[0].ref);
+      const docSnap = snapshot.docs[0];
+      const data = docSnap.data();
+      const section = String(seatId).split('-')[0];
+      const isUnavailable = String(data.ownerUid || '').toUpperCase() === 'ADMIN_UNAVAILABLE';
+
+      const batch = writeBatch(db);
+      batch.delete(docSnap.ref);
+
+      const invRef = doc(db, "eventInventories", eventId);
+      const invUpdates = { updatedAt: serverTimestamp() };
+      if (isUnavailable) {
+        invUpdates[`sections.${section}.unavailable`] = increment(-1);
+      } else {
+        invUpdates[`sections.${section}.taken`] = increment(-1);
+      }
+      batch.set(invRef, invUpdates, { merge: true });
+      await batch.commit();
     }
   } catch (error) {
     console.error("Error releasing seat:", error);
