@@ -10,6 +10,14 @@ const Home = () => {
     const [currentEvents, setCurrentEvents] = useState([])
     const [loading, setLoading] = useState(true)
     const [pastEvents, setPastEvents] = useState([])
+    const [currentImageIndex, setCurrentImageIndex] = useState(0)
+
+    const scrollingImages = [
+        '/cofcScrollingImage1.webp',
+        '/cofcScrollingImage2.png',
+        '/cofcScrollingImage3.webp',
+        '/cofcScrollingImage4.jpg'
+    ]
 
     useEffect(() => {
         const loadEvents = async () => {
@@ -50,6 +58,15 @@ const Home = () => {
         loadEvents()
     }, [])
 
+    // Auto-scroll carousel effect
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentImageIndex((prevIndex) => (prevIndex + 1) % scrollingImages.length)
+        }, 4000) // Change image every 4 seconds
+
+        return () => clearInterval(interval)
+    }, [scrollingImages.length])
+
     const handleEventClick = (eventId) => {
         navigate(`/events/${eventId}`)
     }
@@ -59,20 +76,59 @@ const Home = () => {
     }
 
     return (
-        <div className="max-w-7xl mx-auto p-6 mt-12">
-            <h1 className="text-3xl font-bold mb-8 bg-white border border-gray-300 rounded-lg px-6 py-4 shadow-sm">
-                Welcome to Cougar Courtside
-            </h1>
-            
+         <div className="max-w-7xl mx-auto p-6 mt-12">
             {currentUser && (
                 <p className="text-lg mb-8 bg-white/90 rounded-lg px-4 py-2 inline-block">
                     Hello, {currentUser.displayName || currentUser.email}!
                 </p>
             )}
 
+            <h1 className="text-3xl font-bold mb-8 bg-white border border-gray-300 rounded-lg px-6 py-4 shadow-sm flex items-center gap-2">
+                <img
+                    src="/cougarCourtsideLOGO.png"
+                    alt="Cougar Courtside Logo"
+                    className="h-40 md:h-44 w-auto shrink-0 drop-shadow-lg border-2 border-gray-800 rounded"
+                />
+                <span>Welcome to Cougar Courtside</span>
+                <img
+                    src="/CofC_Logo.png"
+                    alt="College of Charleston Logo"
+                    className="h-40 md:h-44 w-auto shrink-0 drop-shadow-lg border-2 border-gray-800 rounded"
+                />
+            </h1>
+
+            {/* Auto-scrolling Image Carousel */}
+            <div className="mb-8 bg-white border border-gray-300 rounded-2xl overflow-hidden shadow-md">
+                <div className="relative h-64 md:h-96">
+                    {scrollingImages.map((image, index) => (
+                        <img
+                            key={index}
+                            src={image}
+                            alt={`College of Charleston ${index + 1}`}
+                            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+                                index === currentImageIndex ? 'opacity-100' : 'opacity-0'
+                            }`}
+                        />
+                    ))}
+                    {/* Carousel indicators */}
+                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+                        {scrollingImages.map((_, index) => (
+                            <button
+                                key={index}
+                                onClick={() => setCurrentImageIndex(index)}
+                                className={`w-3 h-3 rounded-full transition-all ${
+                                    index === currentImageIndex ? 'bg-white w-8' : 'bg-white/50'
+                                }`}
+                                aria-label={`Go to image ${index + 1}`}
+                            />
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white border border-gray-300 rounded-2xl p-5">
             {/* Current Events Section */}
             <section className="mb-12">
-                <div className="bg-white border border-gray-300 rounded-2xl p-5">
                     <h2 className="text-2xl font-semibold mb-4 bg-green-600 text-white rounded-lg px-6 py-3 inline-block">
                         🔴 Live Now at TD Arena
                     </h2>
@@ -109,12 +165,10 @@ const Home = () => {
                             No live games at the moment
                         </div>
                     )}
-                </div>
             </section>
 
             {/* Upcoming Events Section */}
             <section>
-                <div className="bg-white border border-gray-300 rounded-2xl p-5">
                     <h2 className="text-2xl font-semibold mb-4 bg-purple-600 text-white rounded-lg px-6 py-3 inline-block">
                         📅 Upcoming Events
                     </h2>
@@ -150,12 +204,10 @@ const Home = () => {
                             No upcoming events at this time. Check back soon!
                         </div>
                     )}
-                </div>
             </section>
 
             {/* Past Events Section */}
             <section className="mt-12">
-                <div className="bg-white border border-gray-300 rounded-2xl p-5">
                     <h2 className="text-2xl font-semibold mb-4 bg-gray-700 text-white rounded-lg px-6 py-3 inline-block">
                         🕓 Recent Past Events
                     </h2>
@@ -188,8 +240,9 @@ const Home = () => {
                             No past events archived yet.
                         </div>
                     )}
-                </div>
             </section>
+
+            </div>
 
             {currentEvents.length === 0 && upcomingEvents.length === 0 && (
                 <div className="bg-white rounded-lg p-12 text-center mt-8">
