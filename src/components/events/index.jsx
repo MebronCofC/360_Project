@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { getEvents, addEvent, removeEvent, updateEvent } from "../../data/events";
 import { useAuth } from "../../contexts/authContext";
 import InteractiveSeatingChart from "../seating-chart";
+import { deleteAllTicketsForEventFromDB } from "../../firebase/firestore";
 
 export default function Events() {
   const { isAdmin } = useAuth();
@@ -108,6 +109,41 @@ export default function Events() {
     }
   };
 
+  const onDeleteAllTickets = async (eventId, eventTitle) => {
+    // eslint-disable-next-line no-restricted-globals
+    if (!window.confirm(`Delete ALL tickets for "${eventTitle}"? This cannot be undone.`)) return;
+    
+    try {
+      console.log("Admin requesting deletion of all tickets for event:", eventId);
+      const result = await deleteAllTicketsForEventFromDB(eventId);
+      console.log("Deletion result:", result);
+      
+      if (result.deleted === 0) {
+        alert("No tickets found to delete for this event.");
+      } else {
+        alert(`Successfully deleted ${result.deleted} ticket(s) for this event.`);
+      }
+      
+      await loadEvents();
+    } catch (error) {
+      console.error("Error deleting all tickets:", error);
+      console.error("Error code:", error.code);
+      console.error("Error message:", error.message);
+      
+      // Show more specific error message
+      let errorMsg = "Failed to delete tickets. ";
+      if (error.code === 'permission-denied') {
+        errorMsg += "Permission denied. Make sure you're logged in as an admin.";
+      } else if (error.message) {
+        errorMsg += error.message;
+      } else {
+        errorMsg += "Please check the console for details.";
+      }
+      
+      alert(errorMsg);
+    }
+  };
+
   if (loading) {
     return <div className="max-w-3xl mx-auto p-6 mt-12">Loading events...</div>;
   }
@@ -136,11 +172,11 @@ export default function Events() {
       <ul className="space-y-6">
         {events.map(ev => (
           <li key={ev.id} className="border rounded-xl p-6 app-card mb-6" style={{background:'#ffffffff'}}>
-            <div className="flex items-start justify-between gap-4 mb-4">
-              <div className="flex-1 min-w-0 pr-2">
-                <div className="font-medium text-lg mb-2 truncate">{ev.title}</div>
+            <div className="flex items-start gap-4 mb-4">
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-lg mb-2">{ev.title}</div>
                 {ev.description && (
-                  <div className="text-sm text-gray-600 mb-2 italic leading-5 max-h-12 overflow-hidden">
+                  <div className="text-sm text-gray-600 mb-2 italic leading-5">
                     {ev.description}
                   </div>
                 )}
@@ -149,18 +185,26 @@ export default function Events() {
                 </div>
                 <div className="text-sm text-gray-700">Price: ${ev.basePrice}</div>
               </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="flex flex-col gap-2 flex-shrink-0">
                 <button
                   onClick={() => setShowChartForEvent(showChartForEvent === ev.id ? null : ev.id)}
-                  className="px-4 py-2 rounded-xl bg-purple-600 text-white hover:bg-purple-700"
+                  className="px-4 py-2 rounded-xl bg-purple-600 text-white hover:bg-purple-700 whitespace-nowrap"
                 >
                   {showChartForEvent === ev.id ? 'Hide Chart' : 'View Chart'}
                 </button>
                 {/* Removed redundant "View seats" button; use chart to select a section */}
                 {isAdmin && (
                   <>
-                    <button onClick={() => onEdit(ev)} className="admin-btn" style={{backgroundColor:'#7c3aed'}}>Edit</button>
-                    <button onClick={() => onRemove(ev.id)} className="admin-btn" style={{backgroundColor:'#991b1b'}}>Remove</button>
+                    <button onClick={() => onEdit(ev)} className="admin-btn whitespace-nowrap" style={{backgroundColor:'#7c3aed'}}>Edit</button>
+                    <button onClick={() => onRemove(ev.id)} className="admin-btn whitespace-nowrap" style={{backgroundColor:'#991b1b'}}>Remove</button>
+                    <button 
+                      onClick={() => onDeleteAllTickets(ev.id, ev.title)} 
+                      className="admin-btn whitespace-nowrap" 
+                      style={{backgroundColor:'#dc2626'}}
+                      title="Delete all tickets for this event"
+                    >
+                      Delete All Tickets
+                    </button>
                   </>
                 )}
               </div>

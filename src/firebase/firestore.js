@@ -258,6 +258,65 @@ export async function invalidateTicketsForEventInDB(eventId) {
   }
 }
 
+// Delete all tickets for an event (admin function)
+export async function deleteAllTicketsForEventFromDB(eventId) {
+  try {
+    console.log("Starting deletion of all tickets for event:", eventId);
+    
+    const ticketsCol = collection(db, "tickets");
+    const q = query(ticketsCol, where("eventId", "==", eventId));
+    const snapshot = await getDocs(q);
+    
+    console.log("Found tickets to delete:", snapshot.docs.length);
+    
+    if (snapshot.empty) {
+      console.log("No tickets to delete for event:", eventId);
+      return { deleted: 0 };
+    }
+
+    // Use multiple batches if needed (Firestore limit is 500 operations per batch)
+    const batchSize = 500;
+    const batches = [];
+    let currentBatch = writeBatch(db);
+    let operationCount = 0;
+    
+    // Delete all ticket documents
+    snapshot.docs.forEach((ticketDoc, index) => {
+      currentBatch.delete(ticketDoc.ref);
+      operationCount++;
+      
+      // Start a new batch if we hit the limit
+      if (operationCount === batchSize) {
+        batches.push(currentBatch);
+        currentBatch = writeBatch(db);
+        operationCount = 0;
+      }
+    });
+    
+    // Add the last batch if it has operations
+    if (operationCount > 0) {
+      batches.push(currentBatch);
+    }
+
+    // Delete the event inventory aggregate in a separate batch to ensure it completes
+    const invBatch = writeBatch(db);
+    const invRef = doc(db, "eventInventories", eventId);
+    invBatch.delete(invRef);
+    batches.push(invBatch);
+
+    // Commit all batches
+    console.log("Committing", batches.length, "batch(es)...");
+    await Promise.all(batches.map(batch => batch.commit()));
+    
+    console.log("Successfully deleted", snapshot.docs.length, "tickets");
+    return { deleted: snapshot.docs.length };
+  } catch (error) {
+    console.error("Error deleting all tickets for event:", error);
+    console.error("Error details:", error.message, error.code);
+    throw error;
+  }
+}
+
 // ==================== TICKETS ====================
 
 // Get tickets for a user
