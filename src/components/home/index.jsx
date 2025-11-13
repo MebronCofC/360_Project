@@ -187,7 +187,7 @@ const Home = () => {
 
             {/* Current Events Section */}
             <section className="mb-12">
-                    <h2 className="text-2xl font-semibold mb-4 bg-green-600 text-white rounded-lg px-6 py-3 inline-block">
+                    <h2 className="text-2xl font-semibold mb-4 bg-green-600 text-white rounded-lg px-6 py-3 inline-block shadow-md">
                         🔴 Live Now at TD Arena
                     </h2>
                     {currentEvents.length > 0 ? (
@@ -196,7 +196,7 @@ const Home = () => {
                                 <div
                                     key={ev.id}
                                     onClick={() => handleEventClick(ev.id)}
-                                    className="bg-white border-4 border-green-500 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all cursor-pointer transform hover:scale-105"
+                                    className="bg-white/80 backdrop-blur-sm border-4 border-green-500 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all cursor-pointer transform hover:scale-105"
                                 >
                                     <div className="flex items-center gap-2 mb-2">
                                         <span className="w-3 h-3 bg-red-600 rounded-full animate-pulse"></span>
@@ -238,7 +238,7 @@ const Home = () => {
 
             {/* Upcoming Events Section */}
             <section>
-                    <h2 className="text-2xl font-semibold mb-4 bg-purple-600 text-white rounded-lg px-6 py-3 inline-block">
+                    <h2 className="text-2xl font-semibold mb-4 bg-purple-600 text-white rounded-lg px-6 py-3 inline-block shadow-md">
                         📅 Upcoming Events
                     </h2>
                     {upcomingEvents.length > 0 ? (
@@ -247,7 +247,7 @@ const Home = () => {
                                 <div
                                     key={ev.id}
                                     onClick={() => handleEventClick(ev.id)}
-                                    className="bg-white border border-gray-300 rounded-xl p-6 shadow-md hover:shadow-xl transition-all cursor-pointer transform hover:scale-105 hover:border-purple-500"
+                                    className="bg-white/80 backdrop-blur-sm border border-gray-300 rounded-xl p-6 shadow-md hover:shadow-xl transition-all cursor-pointer transform hover:scale-105 hover:border-purple-500"
                                 >
                                     <h3 className="text-xl font-bold mb-2 text-gray-900 flex items-center justify-between">
                                         <span>{ev.title}</span>
@@ -288,7 +288,7 @@ const Home = () => {
 
             {/* Past Events Section */}
             <section className="mt-12">
-                    <h2 className="text-2xl font-semibold mb-4 bg-gray-700 text-white rounded-lg px-6 py-3 inline-block">
+                    <h2 className="text-2xl font-semibold mb-4 bg-gray-700 text-white rounded-lg px-6 py-3 inline-block shadow-md">
                         🕓 Recent Past Events
                     </h2>
                     {pastEvents.length > 0 ? (
@@ -296,7 +296,7 @@ const Home = () => {
                             {pastEvents.map(ev => (
                                 <div
                                     key={ev.id}
-                                    className="bg-white border border-gray-300 rounded-xl p-6 shadow-md"
+                                    className="bg-white/80 backdrop-blur-sm border border-gray-300 rounded-xl p-6 shadow-md"
                                 >
                                     <h3 className="text-xl font-bold mb-2 text-gray-900">{ev.title}</h3>
                                     {ev.description && (
