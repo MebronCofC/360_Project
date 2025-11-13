@@ -135,12 +135,12 @@ const Home = () => {
     return (
          <div className="max-w-7xl mx-auto p-6 mt-12">
             {currentUser && (
-                <p className="text-lg mb-8 bg-white/90 rounded-lg px-4 py-2 inline-block">
+                <p className="text-lg mb-8 bg-white/90 backdrop-blur-sm rounded-lg px-4 py-2 inline-block shadow-md">
                     Hello, {currentUser.displayName || currentUser.email}!
                 </p>
             )}
 
-            <h1 className="text-3xl font-bold mb-8 bg-white border border-gray-300 rounded-lg px-6 py-4 shadow-sm flex items-center gap-2">
+            <h1 className="text-3xl font-bold mb-8 bg-white/95 backdrop-blur-sm border border-gray-300 rounded-lg px-6 py-4 shadow-lg flex items-center gap-2">
                 <img
                     src="/cougarCourtsideLOGO.png"
                     alt="Cougar Courtside Logo"
@@ -155,7 +155,7 @@ const Home = () => {
             </h1>
 
             {/* Auto-scrolling Image Carousel */}
-            <div className="mb-8 bg-white border border-gray-300 rounded-2xl overflow-hidden shadow-md">
+            <div className="mb-8 bg-white/95 backdrop-blur-sm border border-gray-300 rounded-2xl overflow-hidden shadow-lg">
                 <div className="relative h-64 md:h-96">
                     {scrollingImages.map((image, index) => (
                         <img
@@ -183,7 +183,7 @@ const Home = () => {
                 </div>
             </div>
 
-            <div className="bg-white border border-gray-300 rounded-2xl p-5">
+            <div className="bg-white/95 backdrop-blur-sm border border-gray-300 rounded-2xl p-6 shadow-lg">
             {/* Current Events Section */}
             <section className="mb-12">
                     <h2 className="text-2xl font-semibold mb-4 bg-green-600 text-white rounded-lg px-6 py-3 inline-block">
@@ -229,7 +229,7 @@ const Home = () => {
                             ))}
                         </div>
                     ) : (
-                        <div className="bg-white rounded-lg p-8 text-center text-gray-500 mt-4">
+                        <div className="bg-gray-50 rounded-lg p-8 text-center text-gray-500 mt-4 border border-gray-200">
                             No live games at the moment
                         </div>
                     )}
@@ -279,7 +279,7 @@ const Home = () => {
                             ))}
                         </div>
                     ) : (
-                        <div className="bg-white rounded-lg p-8 text-center text-gray-500 mt-4">
+                        <div className="bg-gray-50 rounded-lg p-8 text-center text-gray-500 mt-4 border border-gray-200">
                             No upcoming events at this time. Check back soon!
                         </div>
                     )}
@@ -315,7 +315,7 @@ const Home = () => {
                             ))}
                         </div>
                     ) : (
-                        <div className="bg-white rounded-lg p-8 text-center text-gray-500 mt-4">
+                        <div className="bg-gray-50 rounded-lg p-8 text-center text-gray-500 mt-4 border border-gray-200">
                             No past events archived yet.
                         </div>
                     )}
@@ -324,7 +324,7 @@ const Home = () => {
             </div>
 
             {currentEvents.length === 0 && upcomingEvents.length === 0 && (
-                <div className="bg-white rounded-lg p-12 text-center mt-8">
+                <div className="bg-white/95 backdrop-blur-sm rounded-lg p-12 text-center mt-8 shadow-lg border border-gray-300">
                     <p className="text-xl text-gray-600 mb-4">No events scheduled at TD Arena right now.</p>
                     <p className="text-gray-500">Check back later for exciting upcoming events!</p>
                 </div>
