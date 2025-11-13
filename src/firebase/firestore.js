@@ -181,14 +181,34 @@ export async function getSeatsForEventFromDB(eventId) {
 // Add seat to event
 export async function addSeatToEventInDB(eventId, seatData) {
   try {
+    // Get event details for naming
+    const eventDoc = await getEventByIdFromDB(eventId);
+    if (!eventDoc) {
+      throw new Error("Event not found");
+    }
+    
+    // Create a clean event slug for document IDs
+    const eventSlug = eventDoc.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .substring(0, 30);
+    
     const seatsCol = collection(db, "seats");
-    const docRef = await addDoc(seatsCol, {
+    // Create structured seat ID: eventName-seat-{seatId}
+    const seatDocId = `${eventSlug}-seat-${seatData.seatId}`;
+    const seatRef = doc(seatsCol, seatDocId);
+    
+    await setDoc(seatRef, {
+      seatDocId,
       eventId,
+      eventTitle: eventDoc.title,
       ...seatData,
       isAvailable: true,
       createdAt: serverTimestamp()
     });
-    return docRef.id;
+    
+    return seatDocId;
   } catch (error) {
     console.error("Error adding seat:", error);
     throw error;
@@ -345,6 +365,40 @@ export async function getTicketsForEventFromDB(eventId) {
   }
 }
 
+// Get tickets by seat ID (useful for checking seat assignment)
+export async function getTicketsBySeatIdFromDB(eventId, seatId) {
+  try {
+    const ticketsCol = collection(db, "tickets");
+    const q = query(
+      ticketsCol, 
+      where("eventId", "==", eventId),
+      where("seatId", "==", seatId)
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Error getting tickets by seat:", error);
+    return [];
+  }
+}
+
+// Get tickets by section (useful for section-level management)
+export async function getTicketsBySectionFromDB(eventId, section) {
+  try {
+    const ticketsCol = collection(db, "tickets");
+    const q = query(
+      ticketsCol, 
+      where("eventId", "==", eventId),
+      where("section", "==", section)
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Error getting tickets by section:", error);
+    return [];
+  }
+}
+
 // Add ticket
 export async function addTicketToDB(ticketData) {
   try {
@@ -403,25 +457,49 @@ export async function assignSeatsInDB(eventId, seatIds, ownerUid, eventTitle, st
       throw new Error(`Seats already taken: ${unavailable.join(", ")}`);
     }
     
+    // Create a clean event slug for document IDs
+    const eventSlug = eventTitle
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .substring(0, 30); // Limit length
+    
     // Create tickets in batch
     const orderId = `ord_${Math.random().toString(36).slice(2, 10)}`;
     const batch = writeBatch(db);
     const ticketsCol = collection(db, "tickets");
     const sectionDeltas = {};
     
+    // Get current ticket count for this event to generate sequential numbers
+    const existingTicketsQuery = query(ticketsCol, where("eventId", "==", eventId));
+    const existingTicketsSnapshot = await getDocs(existingTicketsQuery);
+    let ticketNumber = existingTicketsSnapshot.docs.length + 1;
+    
     seatIds.forEach(seatId => {
-      const ticketId = `t_${Math.random().toString(36).slice(2, 10)}`;
-      const ticketRef = doc(ticketsCol, ticketId);
+      // Create structured ticket ID: eventName-ticket-{number}
+      const ticketDocId = `${eventSlug}-ticket-${ticketNumber}`;
+      ticketNumber++;
+      
+      const ticketRef = doc(ticketsCol, ticketDocId);
       batch.set(ticketRef, {
+        // Core identifiers for relationships
+        ticketId: ticketDocId,
         orderId,
         ownerUid,
         ownerEmail: userEmail || null,
         ownerName: userName || null,
+        
+        // Event relationship
         eventId,
         eventTitle,
         startTime,
         endTime: endTime || null,
+        
+        // Seat relationship
         seatId,
+        section: String(seatId).split('-')[0],
+        
+        // QR and status
         qrPayload: `ticket:${orderId}:${seatId}:${eventId}`,
         status: "Issued",
         createdAt: serverTimestamp()
