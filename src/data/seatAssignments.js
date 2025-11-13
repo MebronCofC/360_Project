@@ -142,38 +142,56 @@ export async function getEventInventory(eventId) {
     // If we couldn't derive anything (likely due to restricted ticket reads), try public aggregated doc
     if (Object.keys(resultSections).length === 0) {
       const inv = await getEventInventoryDocFromDB(eventId);
-      if (inv && inv.sections) {
-        const sections = {};
-        let lowCount = 0;
-        const sold = [];
-        const fullyUnavail = [];
-        for (const [sec, stats] of Object.entries(inv.sections)) {
-          const total = stats.total ?? totalSeatsForSection(sec);
-          const taken = stats.taken ?? 0;
-          const unavailable = stats.unavailable ?? 0;
-          const remaining = Math.max(total - taken, 0);
-          const remainingRatio = total > 0 ? remaining / total : 0;
-          sections[sec] = { total, taken, remaining, remainingRatio, unavailable, reserved: 0 };
-          
-          // Check if fully unavailable (all admin-marked unavailable)
-          if (unavailable === total && total > 0) {
-            fullyUnavail.push(sec);
-          } 
-          // Check if sold out (no seats remaining, regardless of reason)
-          else if (remaining === 0 && total > 0) {
-            sold.push(sec);
-          } 
-          // Check for low inventory
-          else if (remainingRatio <= 0.35 && remaining > 0) {
-            lowCount++;
+      if (inv) {
+        // Normalize legacy dotted keys like "sections.110.taken" into inv.sections map
+        if (!inv.sections) {
+          const dotted = Object.entries(inv).filter(([k]) => k.startsWith("sections."));
+          if (dotted.length) {
+            const rebuilt = {};
+            for (const [key, val] of dotted) {
+              const parts = key.split("."); // ["sections", "110", "taken"]
+              const sec = parts[1];
+              const prop = parts[2];
+              if (!rebuilt[sec]) rebuilt[sec] = {};
+              rebuilt[sec][prop] = val;
+            }
+            inv.sections = rebuilt;
           }
         }
-        return {
-          sections,
-          lowInventorySections: lowCount,
-          soldOutSections: sold,
-          fullyUnavailableSections: fullyUnavail
-        };
+
+        if (inv.sections) {
+          const sections = {};
+          let lowCount = 0;
+          const sold = [];
+          const fullyUnavail = [];
+          for (const [sec, stats] of Object.entries(inv.sections)) {
+            const total = (stats && stats.total != null) ? stats.total : totalSeatsForSection(sec);
+            const taken = (stats && stats.taken != null) ? stats.taken : 0;
+            const unavailable = (stats && stats.unavailable != null) ? stats.unavailable : 0;
+            const remaining = Math.max(total - taken, 0);
+            const remainingRatio = total > 0 ? remaining / total : 0;
+            sections[sec] = { total, taken, remaining, remainingRatio, unavailable, reserved: 0 };
+
+            // Check if fully unavailable (all admin-marked unavailable)
+            if (unavailable === total && total > 0) {
+              fullyUnavail.push(sec);
+            }
+            // Check if sold out (no seats remaining, regardless of reason)
+            else if (remaining === 0 && total > 0) {
+              sold.push(sec);
+            }
+            // Check for low inventory
+            else if (remainingRatio <= 0.35 && remaining > 0) {
+              lowCount++;
+            }
+          }
+          return {
+            sections,
+            lowInventorySections: lowCount,
+            soldOutSections: sold,
+            fullyUnavailableSections: fullyUnavail
+          };
+        }
       }
     }
     return { 

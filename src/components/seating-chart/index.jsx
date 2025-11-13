@@ -13,9 +13,14 @@ export default function InteractiveSeatingChart({ eventId }) {
     async function loadInventory() {
       try {
         if (!eventId) return;
+  console.log("Loading inventory for event:", eventId);
         const inv = await getEventInventory(eventId);
+  console.log("Inventory result:", inv);
+  console.log("Sold out sections:", inv?.soldOutSections);
+  console.log("Fully unavailable sections:", inv?.fullyUnavailableSections);
         const so = new Set((inv?.soldOutSections || []).map(String));
         const fu = new Set((inv?.fullyUnavailableSections || []).map(String));
+  console.log("Section 110 sold out?", so.has('110'));
         if (!cancelled) {
           setSoldOutSections(so);
           setUnavailableSections(fu);

@@ -514,31 +514,42 @@ export async function assignSeatsInDB(eventId, seatIds, ownerUid, eventTitle, st
       }
     });
 
-    // Write aggregated public inventory updates
-    if (Object.keys(sectionDeltas).length) {
-      const invRef = doc(db, "eventInventories", eventId);
-      const updates = {};
-      
-      // Calculate total seats being sold (excluding admin unavailable)
-      let totalSeatsSold = 0;
-      
-      for (const [section, delta] of Object.entries(sectionDeltas)) {
-        updates[`sections.${section}.taken`] = increment(delta.taken);
-        updates[`sections.${section}.unavailable`] = increment(delta.unavailable);
-        updates[`sections.${section}.total`] = totalSeatsForSectionRaw(section);
-        
-        // Only count actual sales (not admin unavailable) toward total
-        totalSeatsSold += delta.taken;
-      }
-      
-      // Update total sold seats for the entire event
-      updates[`totalSeatsSold`] = increment(totalSeatsSold);
-      updates[`updatedAt`] = serverTimestamp();
-      
-      batch.set(invRef, updates, { merge: true });
-    }
-    
+    // Commit the ticket creation batch first
     await batch.commit();
+    
+    // Write aggregated public inventory updates in a separate transaction
+    // This allows non-admin users to create tickets while keeping inventory writes controlled
+    if (Object.keys(sectionDeltas).length) {
+      try {
+        const invRef = doc(db, "eventInventories", eventId);
+        
+        // Calculate total seats being sold (excluding admin unavailable)
+        let totalSeatsSold = 0;
+        const sectionsUpdate = {};
+        
+        for (const [section, delta] of Object.entries(sectionDeltas)) {
+          sectionsUpdate[section] = {
+            taken: increment(delta.taken),
+            unavailable: increment(delta.unavailable),
+            total: totalSeatsForSectionRaw(section)
+          };
+          // Only count actual sales (not admin unavailable) toward total
+          totalSeatsSold += delta.taken;
+        }
+        
+        const updates = {
+          sections: sectionsUpdate,
+          totalSeatsSold: increment(totalSeatsSold),
+          updatedAt: serverTimestamp()
+        };
+        
+        // Use set with merge to upsert and merge nested sections correctly
+        await setDoc(invRef, updates, { merge: true });
+      } catch (invError) {
+        // If inventory update fails (e.g., permission denied), log but don't fail the ticket creation
+        console.warn("Inventory update failed (tickets still created):", invError);
+      }
+    }
     return orderId;
   } catch (error) {
     console.error("Error assigning seats:", error);
@@ -568,14 +579,17 @@ export async function releaseSeatInDB(eventId, seatId, ownerUid) {
       batch.delete(docSnap.ref);
 
       const invRef = doc(db, "eventInventories", eventId);
-      const invUpdates = { updatedAt: serverTimestamp() };
-      
-      if (isUnavailable) {
-        invUpdates[`sections.${section}.unavailable`] = increment(-1);
-      } else {
-        invUpdates[`sections.${section}.taken`] = increment(-1);
-        // Decrement total sold seats count (only for actual sales, not admin unavailable)
-        invUpdates[`totalSeatsSold`] = increment(-1);
+      const invUpdates = {
+        updatedAt: serverTimestamp(),
+        sections: {
+          [section]: isUnavailable
+            ? { unavailable: increment(-1) }
+            : { taken: increment(-1) }
+        }
+      };
+      // Decrement total sold seats count (only for actual sales, not admin unavailable)
+      if (!isUnavailable) {
+        invUpdates.totalSeatsSold = increment(-1);
       }
       
       batch.set(invRef, invUpdates, { merge: true });
