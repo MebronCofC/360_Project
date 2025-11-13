@@ -154,9 +154,19 @@ export async function getEventInventory(eventId) {
           const remaining = Math.max(total - taken, 0);
           const remainingRatio = total > 0 ? remaining / total : 0;
           sections[sec] = { total, taken, remaining, remainingRatio, unavailable, reserved: 0 };
-          if (unavailable === total && total > 0) fullyUnavail.push(sec);
-          else if (remaining === 0) sold.push(sec);
-          else if (remainingRatio <= 0.35) lowCount++;
+          
+          // Check if fully unavailable (all admin-marked unavailable)
+          if (unavailable === total && total > 0) {
+            fullyUnavail.push(sec);
+          } 
+          // Check if sold out (no seats remaining, regardless of reason)
+          else if (remaining === 0 && total > 0) {
+            sold.push(sec);
+          } 
+          // Check for low inventory
+          else if (remainingRatio <= 0.35 && remaining > 0) {
+            lowCount++;
+          }
         }
         return {
           sections,

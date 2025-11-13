@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/authContext'
 import { useNavigate } from 'react-router-dom'
 import { getEvents, getPastEvents, archiveFinishedEvents } from '../../data/events'
 import { getEventInventory } from '../../data/seatAssignments'
+import { getEventInventoryDocFromDB } from '../../firebase/firestore'
 
 const Home = () => {
     const { currentUser } = useAuth()
@@ -57,15 +58,47 @@ const Home = () => {
                 const activeForInventory = [...current, ...upcoming];
                 const lowSet = new Set();
                 const highDemandSet = new Set();
+                
+                // High demand threshold: 2055 seats sold (14/30 sections worth)
+                const HIGH_DEMAND_THRESHOLD = 2055;
+                
                 for (const ev of activeForInventory) {
                     try {
-                        const inventory = await getEventInventory(ev.id);
-                        if (inventory.lowInventorySections >= 2) { // multiple sections low
-                            lowSet.add(ev.id);
-                        }
-                        // Check if 14 or more sections are sold out
-                        if (inventory.soldOutSections && inventory.soldOutSections.length >= 14) {
-                            highDemandSet.add(ev.id);
+                        // Read from database inventory document for accurate real-time counts
+                        const invDoc = await getEventInventoryDocFromDB(ev.id);
+                        
+                        if (invDoc) {
+                            // Check total seats sold for high demand warning
+                            const totalSold = invDoc.totalSeatsSold || 0;
+                            if (totalSold >= HIGH_DEMAND_THRESHOLD) {
+                                highDemandSet.add(ev.id);
+                            }
+                            
+                            // Check for low inventory in individual sections
+                            const sections = invDoc.sections || {};
+                            let lowCount = 0;
+                            for (const [secId, secData] of Object.entries(sections)) {
+                                const total = secData.total || 0;
+                                const taken = secData.taken || 0;
+                                const remaining = total - taken;
+                                const ratio = total > 0 ? remaining / total : 1;
+                                if (ratio <= 0.35 && remaining > 0) {
+                                    lowCount++;
+                                }
+                            }
+                            if (lowCount >= 2) {
+                                lowSet.add(ev.id);
+                            }
+                        } else {
+                            // Fallback to computed inventory if doc doesn't exist yet
+                            const inventory = await getEventInventory(ev.id);
+                            if (inventory.lowInventorySections >= 2) {
+                                lowSet.add(ev.id);
+                            }
+                            // Fallback: use soldOut sections count
+                            if (inventory.soldOutSections && inventory.soldOutSections.length >= 14) {
+                                highDemandSet.add(ev.id);
+                            }
                         }
                     } catch (e) {
                         console.warn('Inventory check failed for event', ev.id, e);

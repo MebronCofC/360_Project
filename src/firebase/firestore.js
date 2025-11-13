@@ -328,7 +328,7 @@ export async function deleteAllTicketsForEventFromDB(eventId) {
     console.log("Committing", batches.length, "batch(es)...");
     await Promise.all(batches.map(batch => batch.commit()));
     
-    console.log("Successfully deleted", snapshot.docs.length, "tickets");
+    console.log("Successfully deleted", snapshot.docs.length, "tickets and reset inventory");
     return { deleted: snapshot.docs.length };
   } catch (error) {
     console.error("Error deleting all tickets for event:", error);
@@ -518,12 +518,23 @@ export async function assignSeatsInDB(eventId, seatIds, ownerUid, eventTitle, st
     if (Object.keys(sectionDeltas).length) {
       const invRef = doc(db, "eventInventories", eventId);
       const updates = {};
+      
+      // Calculate total seats being sold (excluding admin unavailable)
+      let totalSeatsSold = 0;
+      
       for (const [section, delta] of Object.entries(sectionDeltas)) {
         updates[`sections.${section}.taken`] = increment(delta.taken);
         updates[`sections.${section}.unavailable`] = increment(delta.unavailable);
         updates[`sections.${section}.total`] = totalSeatsForSectionRaw(section);
-        updates[`updatedAt`] = serverTimestamp();
+        
+        // Only count actual sales (not admin unavailable) toward total
+        totalSeatsSold += delta.taken;
       }
+      
+      // Update total sold seats for the entire event
+      updates[`totalSeatsSold`] = increment(totalSeatsSold);
+      updates[`updatedAt`] = serverTimestamp();
+      
       batch.set(invRef, updates, { merge: true });
     }
     
@@ -558,11 +569,15 @@ export async function releaseSeatInDB(eventId, seatId, ownerUid) {
 
       const invRef = doc(db, "eventInventories", eventId);
       const invUpdates = { updatedAt: serverTimestamp() };
+      
       if (isUnavailable) {
         invUpdates[`sections.${section}.unavailable`] = increment(-1);
       } else {
         invUpdates[`sections.${section}.taken`] = increment(-1);
+        // Decrement total sold seats count (only for actual sales, not admin unavailable)
+        invUpdates[`totalSeatsSold`] = increment(-1);
       }
+      
       batch.set(invRef, invUpdates, { merge: true });
       await batch.commit();
     }
