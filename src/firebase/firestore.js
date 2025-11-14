@@ -575,25 +575,30 @@ export async function releaseSeatInDB(eventId, seatId, ownerUid) {
       const section = String(seatId).split('-')[0];
       const isUnavailable = String(data.ownerUid || '').toUpperCase() === 'ADMIN_UNAVAILABLE';
 
-      const batch = writeBatch(db);
-      batch.delete(docSnap.ref);
+      // Delete the ticket first
+      await deleteDoc(docSnap.ref);
 
-      const invRef = doc(db, "eventInventories", eventId);
-      const invUpdates = {
-        updatedAt: serverTimestamp(),
-        sections: {
-          [section]: isUnavailable
-            ? { unavailable: increment(-1) }
-            : { taken: increment(-1) }
+      // Update inventory in a separate operation (graceful failure if permission denied)
+      try {
+        const invRef = doc(db, "eventInventories", eventId);
+        const invUpdates = {
+          updatedAt: serverTimestamp(),
+          sections: {
+            [section]: isUnavailable
+              ? { unavailable: increment(-1) }
+              : { taken: increment(-1) }
+          }
+        };
+        // Decrement total sold seats count (only for actual sales, not admin unavailable)
+        if (!isUnavailable) {
+          invUpdates.totalSeatsSold = increment(-1);
         }
-      };
-      // Decrement total sold seats count (only for actual sales, not admin unavailable)
-      if (!isUnavailable) {
-        invUpdates.totalSeatsSold = increment(-1);
+        
+        await setDoc(invRef, invUpdates, { merge: true });
+      } catch (invError) {
+        // If inventory update fails, log but don't fail the ticket deletion
+        console.warn("Inventory update failed (ticket still deleted):", invError);
       }
-      
-      batch.set(invRef, invUpdates, { merge: true });
-      await batch.commit();
     }
   } catch (error) {
     console.error("Error releasing seat:", error);
