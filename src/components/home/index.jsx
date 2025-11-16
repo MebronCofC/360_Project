@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { getEvents, getPastEvents, archiveFinishedEvents } from '../../data/events'
 import { getEventInventory } from '../../data/seatAssignments'
 import { getEventInventoryDocFromDB } from '../../firebase/firestore'
+import Loading from '../common/Loading'
 
 const Home = () => {
     const { currentUser } = useAuth()
@@ -129,7 +130,7 @@ const Home = () => {
     }
 
     if (loading) {
-        return <div className="p-6 mt-12 text-center">Loading events...</div>
+        return <Loading message="Loading events" />
     }
 
     return (

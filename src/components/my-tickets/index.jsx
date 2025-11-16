@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { releaseSeat } from "../../data/seatAssignments";
 import { useAuth } from "../../contexts/authContext";
 import { getTicketsForUserFromDB, deleteTicketFromDB, getEventByIdFromDB, invalidateTicketsForEventInDB } from "../../firebase/firestore";
+import Loading from "../common/Loading";
 
 export default function MyTickets() {
   const { currentUser } = useAuth();
@@ -49,7 +50,7 @@ export default function MyTickets() {
   }, [currentUser?.uid]);
 
   if (!loaded) {
-    return <div className="max-w-3xl mx-auto p-6 mt-12">Loading...</div>;
+    return <Loading />;
   }
   
   const removeTicket = async (ticketId) => {

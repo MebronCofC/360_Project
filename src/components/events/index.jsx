@@ -4,6 +4,7 @@ import { getEvents, addEvent, removeEvent, updateEvent } from "../../data/events
 import { useAuth } from "../../contexts/authContext";
 import InteractiveSeatingChart from "../seating-chart";
 import { deleteAllTicketsForEventFromDB } from "../../firebase/firestore";
+import Loading from "../common/Loading";
 
 export default function Events() {
   const { isAdmin } = useAuth();
@@ -145,7 +146,7 @@ export default function Events() {
   };
 
   if (loading) {
-    return <div className="max-w-3xl mx-auto p-6 mt-12">Loading events...</div>;
+    return <Loading message="Loading events" />;
   }
 
   return (

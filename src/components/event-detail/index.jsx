@@ -4,6 +4,7 @@ import { getEvents, seatsForEvent, getSeatsForEvent } from "../../data/events";
 import { assignSeats, getAssignedSeats, getEventInventory } from "../../data/seatAssignments";
 import { useAuth } from "../../contexts/authContext";
 import InteractiveSeatingChart from "../seating-chart";
+import Loading from "../common/Loading";
 
 export default function EventDetail() {
   const { eventId } = useParams();
@@ -167,7 +168,7 @@ export default function EventDetail() {
 
                       // Legacy admin seat CRUD handlers removed (now managed via Section Overview)
 
-                      if (loading) return <div className="p-6 mt-12">Loading event...</div>;
+                      if (loading) return <Loading message="Loading event" />;
                       if (!ev) return <div className="p-6 mt-12">Event not found.</div>;
 
                       const toggleSeat = (seatId) => {
