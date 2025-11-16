@@ -76,7 +76,13 @@ export default function MyTickets() {
   };
 
   if (!currentUser?.uid) {  //guests can't see tickets
-    return <div className="max-w-3xl mx-auto p-6 mt-12">Please log in to view your tickets.</div>;
+    return (
+      <div className="max-w-3xl mx-auto p-6 mt-12">
+        <div className="bg-white/95 backdrop-blur-sm border border-gray-300 rounded-2xl p-12 shadow-lg text-center">
+          <p className="text-xl text-gray-600">Please log in to register and view your tickets</p>
+        </div>
+      </div>
+    );
   }
   if (!tickets.length) {
     return (
