@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { getEvents, seatsForEvent, getSeatsForEvent } from "../../data/events";
-import { assignSeats, getAssignedSeats, getEventInventory } from "../../data/seatAssignments";
+import { assignSeats, getAssignedSeats, getEventInventory, releaseSeat } from "../../data/seatAssignments";
 import { getTicketsForEventFromDB, revokeTicketForSeatInDB } from "../../firebase/firestore";
 import { useAuth } from "../../contexts/authContext";
 import InteractiveSeatingChart from "../seating-chart";
@@ -25,6 +25,8 @@ export default function EventDetail() {
   const [sectionStats, setSectionStats] = useState([]);
   const [expandedSection, setExpandedSection] = useState(null);
   const [sectionSeatsForAdmin, setSectionSeatsForAdmin] = useState([]);
+  const [pendingStatusBySeat, setPendingStatusBySeat] = useState({});
+  const [ticketsBySeatIdMap, setTicketsBySeatIdMap] = useState({});
 
   // Section-based seat generation rules
   const LARGE_SECTIONS = useMemo(() => new Set([110,111,112,113,114,115,101,102,103,104,105,106,107,109]), []);
@@ -215,13 +217,19 @@ export default function EventDetail() {
                               ticketsBySeatId[ticket.seatId] = ticket;
                             }
                           });
+                          setTicketsBySeatIdMap(ticketsBySeatId);
                           // Get ticket status for each seat
                           const takenSeats = await getAssignedSeats(eventId);
                           const seatsWithStatus = sectionSeats.map(seat => {
                             const ticket = ticketsBySeatId[seat.seatId];
+                            let status = 'available';
+                            if (takenSeats.has(seat.seatId)) {
+                              const owner = String(ticket?.ownerUid || '').toUpperCase();
+                              status = owner === 'ADMIN_UNAVAILABLE' ? 'unavailable' : 'reserved';
+                            }
                             return {
                               ...seat,
-                              status: takenSeats.has(seat.seatId) ? 'reserved' : 'available',
+                              status,
                               ownerUid: ticket?.ownerUid || null,
                               ownerName: ticket?.ownerName || null,
                               ownerEmail: ticket?.ownerEmail || null
@@ -512,30 +520,57 @@ export default function EventDetail() {
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                   <select
-                                                    value={seat.status}
-                                                    onChange={async (e) => {
+                                                    value={pendingStatusBySeat[seat.seatId] || seat.status}
+                                                    onChange={(e) => {
                                                       const val = e.target.value;
-                                                      if (val === 'revoke') {
-                                                        try {
-                                                          await revokeTicketForSeatInDB(eventId, seat.seatId);
-                                                          await toggleSectionExpanded(expandedSection); // refresh section
-                                                          const takenSeats = await getAssignedSeats(eventId);
-                                                          setTaken(takenSeats || new Set());
-                                                        } catch (err) {
-                                                          console.error('Failed to revoke ticket', err);
-                                                          alert('Failed to revoke ticket');
-                                                        }
-                                                        return;
-                                                      }
-                                                      updateSeatStatus(seat.seatId, val);
+                                                      setPendingStatusBySeat((prev)=>({ ...prev, [seat.seatId]: val }));
                                                     }}
                                                     className="text-sm border rounded px-2 py-1 bg-white text-black"
                                                   >
                                                     <option value="available">Available</option>
                                                     <option value="reserved">Reserved</option>
                                                     <option value="unavailable">Unavailable</option>
-                                                    {seat.status === 'reserved' && <option value="revoke">Revoke (invalidate ticket)</option>}
+                                                    {seat.status !== 'available' && <option value="revoke">Revoke (invalidate ticket)</option>}
                                                   </select>
+                                                  {(pendingStatusBySeat[seat.seatId] && pendingStatusBySeat[seat.seatId] !== seat.status) && (
+                                                    <button
+                                                      className="ml-2 text-xs px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                                                      onClick={async () => {
+                                                        const newStatus = pendingStatusBySeat[seat.seatId];
+                                                        try {
+                                                          if (newStatus === 'reserved') {
+                                                            await assignSeats(eventId, [seat.seatId], 'ADMIN_RESERVED', {}, ev.title, ev.startTime, ev.endTime || null, 'admin-reserved', 'Admin Reserved');
+                                                          } else if (newStatus === 'unavailable') {
+                                                            await assignSeats(eventId, [seat.seatId], 'ADMIN_UNAVAILABLE', {}, ev.title, ev.startTime, ev.endTime || null, 'admin-unavailable', 'Admin Unavailable');
+                                                          } else if (newStatus === 'available') {
+                                                            const t = ticketsBySeatIdMap[seat.seatId];
+                                                            if (t) {
+                                                              const owner = String(t.ownerUid || '').toUpperCase();
+                                                              if (owner === 'ADMIN_RESERVED' || owner === 'ADMIN_UNAVAILABLE') {
+                                                                await releaseSeat(eventId, seat.seatId, owner);
+                                                              } else {
+                                                                // if a real user owns it, revoke per requirement
+                                                                await revokeTicketForSeatInDB(eventId, seat.seatId);
+                                                              }
+                                                            }
+                                                          } else if (newStatus === 'revoke') {
+                                                            await revokeTicketForSeatInDB(eventId, seat.seatId);
+                                                          }
+                                                          // Refresh and clear pending; also force page refresh per requirement
+                                                          setPendingStatusBySeat((prev)=>{ const n={...prev}; delete n[seat.seatId]; return n; });
+                                                          await toggleSectionExpanded(expandedSection);
+                                                          const takenSeats = await getAssignedSeats(eventId);
+                                                          setTaken(takenSeats || new Set());
+                                                          window.location.reload();
+                                                        } catch (err) {
+                                                          console.error('Failed to apply change', err);
+                                                          alert('Failed to apply change');
+                                                        }
+                                                      }}
+                                                    >
+                                                      Confirm
+                                                    </button>
+                                                  )}
                                                   <span className={`text-xs px-2 py-1 rounded ${
                                                     seat.status === 'available' ? 'bg-green-100 text-green-700' :
                                                     seat.status === 'reserved' ? 'bg-yellow-100 text-yellow-700' :
