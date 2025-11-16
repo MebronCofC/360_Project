@@ -3,17 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { areAvailable, assignSeats } from "../../data/seatAssignments";
 import { useAuth } from "../../contexts/authContext";
 import { getTicketsForUserFromDB } from "../../firebase/firestore";
+import { QRCodeCanvas } from "qrcode.react";
 
 
-// simple base64 QR fallback (no deps) — encodes a text payload and displays it
-function FakeQR({ value }) {
-  // display the payload in a styled box as a stand-in for a QR image for the demo
-  return (
-    <div className="border rounded-xl p-3 bg-gray-50 text-xs break-all">
-      {value}
-    </div>
-  );
-}
 
 export default function Checkout() {
   const { currentUser } = useAuth?.();
@@ -110,12 +102,14 @@ export default function Checkout() {
           {orderId && (
             <div className="text-xs text-gray-500">Order ID: {orderId}</div>
           )}
-          <div className="text-sm text-gray-600">Example QR payload (one per seat):</div>
+          <div className="text-sm text-gray-600">Your QR codes (one per seat):</div>
           <div className="grid grid-cols-2 gap-3">
             {purchasedTickets.map(t => (
                 <div key={t.id} className="border rounded-xl p-3">
                   <div className="text-sm font-medium mb-2">{t.eventTitle} — {t.seatId}</div>
-                  <FakeQR value={t.qrPayload} />
+                  <div className="flex items-center justify-center">
+                    <QRCodeCanvas value={t.qrPayload || ''} size={180} includeMargin={true} />
+                  </div>
                 </div>
               ))}
           </div>

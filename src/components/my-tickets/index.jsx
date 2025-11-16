@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { releaseSeat } from "../../data/seatAssignments";
 import { useAuth } from "../../contexts/authContext";
 import { getTicketsForUserFromDB, deleteTicketFromDB, getEventByIdFromDB, invalidateTicketsForEventInDB } from "../../firebase/firestore";
+import { QRCodeCanvas } from "qrcode.react";
 import Loading from "../common/Loading";
 
 export default function MyTickets() {
@@ -196,9 +197,11 @@ export default function MyTickets() {
             </div>
             
             {/* QR Code Section */}
-            <div className="mb-3 p-2 bg-gray-100 rounded text-xs text-gray-500 break-all">
-              <div className="font-semibold mb-1">QR Code:</div>
-              {t.qrPayload}
+            <div className="mb-3 p-3 bg-gray-50 rounded border border-gray-200">
+              <div className="font-semibold mb-2">QR Code</div>
+              <div className="flex items-center justify-center">
+                <QRCodeCanvas value={t.qrPayload || ''} size={160} includeMargin={true} />
+              </div>
             </div>
             
             {/* Remove Button */}
