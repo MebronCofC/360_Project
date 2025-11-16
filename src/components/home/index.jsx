@@ -5,6 +5,7 @@ import { getEvents, getPastEvents, archiveFinishedEvents } from '../../data/even
 import { getEventInventory } from '../../data/seatAssignments'
 import { getEventInventoryDocFromDB } from '../../firebase/firestore'
 import Loading from '../common/Loading'
+import EspnCarousel from './EspnCarousel'
 
 const Home = () => {
     const { currentUser } = useAuth()
@@ -141,20 +142,24 @@ const Home = () => {
                 </p>
             )}
 
-            {/* Main white backdrop containing everything */}
-            <div className="bg-white/95 backdrop-blur-sm border border-gray-300 rounded-2xl p-6 shadow-lg">
-                <h1 className="text-3xl font-bold mb-8 flex items-center gap-2">
-                    <img
-                        src="/cougarCourtsideLOGO.png"
-                        alt="Cougar Courtside Logo"
-                        className="h-40 md:h-44 w-auto shrink-0 drop-shadow-lg border-2 border-gray-800 rounded"
-                    />
-                    <span>Welcome to Cougar Courtside</span>
-                    <img
-                        src="/CofC_Logo.png"
-                        alt="College of Charleston Logo"
-                        className="h-40 md:h-44 w-auto shrink-0 drop-shadow-lg border-2 border-gray-800 rounded"
-                    />
+            {/* Layout with main content on left and info box on right */}
+            <div className="flex gap-6 items-start">
+                {/* Main white backdrop containing everything */}
+                <div className="flex-1 bg-white/95 backdrop-blur-sm border border-gray-300 rounded-2xl p-6 shadow-lg">
+                <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-8">
+                    <div className="flex items-center justify-center gap-2 sm:gap-4 md:gap-6">
+                        <img
+                            src="/cougarCourtsideLOGO.png"
+                            alt="Cougar Courtside Logo"
+                            className="h-16 sm:h-20 md:h-28 lg:h-32 w-auto flex-shrink-1 drop-shadow-lg border-2 border-gray-800 rounded"
+                        />
+                        <span className="text-center min-w-0 flex-shrink-1">Welcome to Cougar Courtside</span>
+                        <img
+                            src="/CofC_Logo.png"
+                            alt="College of Charleston Logo"
+                            className="h-16 sm:h-20 md:h-28 lg:h-32 w-auto flex-shrink-1 drop-shadow-lg border-2 border-gray-800 rounded"
+                        />
+                    </div>
                 </h1>
 
                 {/* Auto-scrolling Image Carousel */}
@@ -325,6 +330,72 @@ const Home = () => {
 
             </div>
             {/* End of main white backdrop */}
+
+            {/* Right column: ESPN carousel above, then info box */}
+            <div className="w-80 flex-shrink-0 flex flex-col gap-6">
+              <EspnCarousel espnUrl="https://www.espn.com/mens-college-basketball/team/_/id/232/charleston-cougars" />
+              <div className="bg-white/95 backdrop-blur-sm border border-gray-300 rounded-2xl p-6 shadow-lg">
+                                <h2 className="text-xl font-bold mb-4 text-gray-900">More Information</h2>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">CofC Men's Basketball</h3>
+                                {/* Men's roster image */}
+                <img
+                  src="/cofcMenRoster.webp"
+                  alt="CofC Men's Basketball Roster"
+                  className="w-full h-auto rounded-lg border border-gray-200 shadow-sm mb-3"
+                  loading="lazy"
+                />
+                <p className="text-gray-700 mb-4">
+                    Click this <a 
+                        href="https://cofcsports.com/sports/mens-basketball" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-purple-600 hover:text-purple-800 font-semibold underline"
+                    >
+                        Link
+                    </a> to for more info on CofC's Mens basketball team!
+                </p>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2 mt-4">CofC Women's Basketball</h3>
+                                {/* Women's roster image */}
+                <img
+                  src="/cofcWomenRoster.webp"
+                  alt="CofC Women's Basketball Roster"
+                  className="w-full h-auto rounded-lg border border-gray-200 shadow-sm mb-3"
+                  loading="lazy"
+                />
+                <p className="text-gray-700 mb-2">
+                    Click this <a 
+                        href="https://cofcsports.com/sports/womens-basketball" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-purple-600 hover:text-purple-800 font-semibold underline"
+                    >
+                        Link
+                    </a> for more info on CofC's Women's basketball team!
+                </p>
+
+                {/* Women's Volleyball */}
+                <h3 className="text-lg font-semibold text-gray-900 mb-2 mt-4">CofC Women's Volleyball</h3>
+                <img
+                  src="/cofcWomenRosterVolleyball.webp"
+                  alt="CofC Women's Volleyball Roster"
+                  className="w-full h-auto rounded-lg border border-gray-200 shadow-sm mb-3"
+                  loading="lazy"
+                />
+                <p className="text-gray-700 mb-2">
+                    Click this <a 
+                        href="https://cofcsports.com/sports/womens-volleyball" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-purple-600 hover:text-purple-800 font-semibold underline"
+                    >
+                        Link
+                    </a> for more info on CofC's womens volleyball team!
+                </p>
+              </div>
+            </div>
+
+            </div>
+            {/* End of flex layout */}
 
             {currentEvents.length === 0 && upcomingEvents.length === 0 && (
                 <div className="bg-white/95 backdrop-blur-sm rounded-lg p-12 text-center mt-8 shadow-lg border border-gray-300">

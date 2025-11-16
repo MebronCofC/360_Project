@@ -1,19 +1,26 @@
 // import { send } from 'process';
 import {auth} from './firebase';
+import { upsertUserProfileInDB } from './firestore';
 
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
-export const doCreateUserWithEmailAndPassword = (email, password) => {
-    return createUserWithEmailAndPassword(auth, email, password);
+export const doCreateUserWithEmailAndPassword = async (email, password) => {
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    // Eagerly create the user profile document
+    try { await upsertUserProfileInDB(cred.user); } catch(e) { console.warn('upsert user (register) failed', e); }
+    return cred;
 };
 
-export const doSignInWithEmailAndPassword = (email, password) => {
-    return signInWithEmailAndPassword(auth, email, password);
+export const doSignInWithEmailAndPassword = async (email, password) => {
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    try { await upsertUserProfileInDB(cred.user); } catch(e) { console.warn('upsert user (email login) failed', e); }
+    return cred;
 }
 
 export const doSignInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     const result = await signInWithPopup(auth, provider);
+    try { await upsertUserProfileInDB(result.user); } catch(e) { console.warn('upsert user (google login) failed', e); }
     return result;
 }
 

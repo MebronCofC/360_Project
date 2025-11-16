@@ -1,5 +1,6 @@
 import React, { useContext, useState, useEffect } from "react";
 import { auth } from "../../firebase/firebase";
+import { upsertUserProfileInDB } from "../../firebase/firestore";
 // import { GoogleAuthProvider } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -36,6 +37,12 @@ export function AuthProvider({ children }) {
   // Google provider detection removed (state unused) – add back if enabling Google auth.
 
       setUserLoggedIn(true);
+      // Ensure a user profile document exists/updates in Firestore for joins
+      try {
+        upsertUserProfileInDB(user);
+      } catch (e) {
+        console.warn("Failed to upsert user profile", e);
+      }
       // admin detection (normalize emails to avoid case/whitespace mismatches)
       const adminEmails = [
         'mebneon@gmail.com',

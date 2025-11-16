@@ -18,10 +18,15 @@ const Header = () => {
     return (
     <nav className="fixed top-0 left-0 z-20 h-12 w-full border-b bg-gray-200">
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-4">
-        {/* Brand / Home */}
-        <Link to="/" className="text-sm font-semibold text-indigo-700 hover:text-indigo-800">
-          Cougar Courtside
-        </Link>
+        {/* Brand + explicit Home link */}
+        <div className="flex items-center gap-x-3">
+          <Link to="/" className="text-sm font-semibold text-red-900 hover:text-red-800">
+            Cougar Courtside
+          </Link>
+          <Link to="/" className="text-sm font-semibold text-black hover:text-gray-800">
+            Home
+          </Link>
+        </div>
 
         {/* Primary nav (aligns with your diagrams / use cases) */}
         <div className="flex items-center gap-x-4">

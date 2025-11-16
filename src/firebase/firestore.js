@@ -15,6 +15,56 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 
+// ==================== USERS ====================
+// Create or update a user profile document for easier joins with tickets
+// Fields:
+// - uid: Firebase Auth UID
+// - email: user's email
+// - provider: 'email' | 'google' (derived from providerData)
+// - accountCreatedAt: Timestamp (from auth.metadata.creationTime)
+// - lastSignInAt: Timestamp (from auth.metadata.lastSignInTime)
+// - updatedAt: server timestamp for auditing
+export async function upsertUserProfileInDB(user) {
+  try {
+    if (!user || !user.uid) return;
+
+    // Determine primary provider in a simple, actionable way
+    const usedGoogle = (user.providerData || []).some(p => p?.providerId === 'google.com');
+    const provider = usedGoogle ? 'google' : 'email';
+
+    // Convert Auth metadata strings to Firestore Timestamps by passing Date
+    const createdAtStr = user.metadata?.creationTime;
+    const lastSignInStr = user.metadata?.lastSignInTime;
+    const createdAtDate = createdAtStr ? new Date(createdAtStr) : null;
+    const lastSignInDate = lastSignInStr ? new Date(lastSignInStr) : null;
+
+    const usersCol = collection(db, 'users');
+    const userRef = doc(usersCol, user.uid);
+
+    await setDoc(
+      userRef,
+      {
+        uid: user.uid,
+        email: user.email || null,
+        provider,
+        accountCreatedAt: createdAtDate || serverTimestamp(),
+        lastSignInAt: lastSignInDate || serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+    if (typeof window !== 'undefined') {
+      console.log('[Firestore] Upserted user profile:', {
+        path: `users/${user.uid}`,
+        email: user.email,
+        provider
+      });
+    }
+  } catch (error) {
+    console.error('Error upserting user profile:', error);
+  }
+}
+
 // ================ PUBLIC INVENTORY (AGGREGATED) HELPERS =================
 // Read aggregated event inventory (public)
 export async function getEventInventoryDocFromDB(eventId) {

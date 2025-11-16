@@ -147,19 +147,17 @@ export default function MyTickets() {
 
   {/* Tickets Grouped by Event */}
   {Object.entries(ticketsByEvent).map(([eventId, eventData], index) => {
-    // Alternate color schemes for different events
-    const colorSchemes = [
-      { gradient: 'from-indigo-600 to-purple-600', ticketBg: 'from-indigo-50 to-purple-50', seatBg: 'bg-indigo-100', seatText: 'text-indigo-700' },
-      { gradient: 'from-pink-600 to-rose-600', ticketBg: 'from-pink-50 to-rose-50', seatBg: 'bg-pink-100', seatText: 'text-pink-700' },
-      { gradient: 'from-blue-600 to-cyan-600', ticketBg: 'from-blue-50 to-cyan-50', seatBg: 'bg-blue-100', seatText: 'text-blue-700' },
-      { gradient: 'from-green-600 to-emerald-600', ticketBg: 'from-green-50 to-emerald-50', seatBg: 'bg-green-100', seatText: 'text-green-700' },
-      { gradient: 'from-orange-600 to-amber-600', ticketBg: 'from-orange-50 to-amber-50', seatBg: 'bg-orange-100', seatText: 'text-orange-700' },
-    ];
-    const colors = colorSchemes[index % colorSchemes.length];
+    // Consistent maroon color scheme for all events
+    const colors = { 
+      gradient: 'from-red-900 to-red-800', 
+      ticketBg: 'from-red-50 to-rose-50', 
+      seatBg: 'bg-red-100', 
+      seatText: 'text-red-900' 
+    };
     
     return (
     <div key={eventId} className="mb-8">
-      {/* Event Header with unique color */}
+      {/* Event Header with maroon color */}
       <div className={`mb-4 p-4 bg-gradient-to-r ${colors.gradient} rounded-xl text-white shadow-lg`}>
         <div className="flex items-center justify-between">
           <div>

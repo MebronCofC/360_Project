@@ -186,21 +186,21 @@ export default function Events() {
                 </div>
                 <div className="text-sm text-gray-700">Price: ${ev.basePrice}</div>
               </div>
-              <div className="flex flex-col gap-2 flex-shrink-0">
+              <div className="flex flex-col gap-2 flex-shrink-0" style={{minWidth: '180px'}}>
                 <button
                   onClick={() => setShowChartForEvent(showChartForEvent === ev.id ? null : ev.id)}
-                  className="px-4 py-2 rounded-xl bg-purple-600 text-white hover:bg-purple-700 whitespace-nowrap"
+                  className="px-4 py-2 rounded-xl bg-purple-600 text-white hover:bg-purple-700 whitespace-nowrap w-full"
                 >
                   {showChartForEvent === ev.id ? 'Hide Chart' : 'View Chart'}
                 </button>
                 {/* Removed redundant "View seats" button; use chart to select a section */}
                 {isAdmin && (
                   <>
-                    <button onClick={() => onEdit(ev)} className="admin-btn whitespace-nowrap" style={{backgroundColor:'#7c3aed'}}>Edit</button>
-                    <button onClick={() => onRemove(ev.id)} className="admin-btn whitespace-nowrap" style={{backgroundColor:'#991b1b'}}>Remove</button>
+                    <button onClick={() => onEdit(ev)} className="admin-btn whitespace-nowrap w-full" style={{backgroundColor:'#7c3aed'}}>Edit</button>
+                    <button onClick={() => onRemove(ev.id)} className="admin-btn whitespace-nowrap w-full" style={{backgroundColor:'#991b1b'}}>Remove</button>
                     <button 
                       onClick={() => onDeleteAllTickets(ev.id, ev.title)} 
-                      className="admin-btn whitespace-nowrap" 
+                      className="admin-btn whitespace-nowrap w-full" 
                       style={{backgroundColor:'#dc2626'}}
                       title="Delete all tickets for this event"
                     >

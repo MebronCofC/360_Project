@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { getEvents, seatsForEvent, getSeatsForEvent } from "../../data/events";
 import { assignSeats, getAssignedSeats, getEventInventory } from "../../data/seatAssignments";
+import { getTicketsForEventFromDB } from "../../firebase/firestore";
 import { useAuth } from "../../contexts/authContext";
 import InteractiveSeatingChart from "../seating-chart";
 import Loading from "../common/Loading";
@@ -206,12 +207,26 @@ export default function EventDetail() {
                           setExpandedSection(section);
                           // Generate all seats for this section
                           const sectionSeats = generateSectionSeats(section);
+                          // Get all tickets for this event to get user information
+                          const allTickets = await getTicketsForEventFromDB(eventId);
+                          const ticketsBySeatId = {};
+                          allTickets.forEach(ticket => {
+                            if (ticket.seatId) {
+                              ticketsBySeatId[ticket.seatId] = ticket;
+                            }
+                          });
                           // Get ticket status for each seat
                           const takenSeats = await getAssignedSeats(eventId);
-                          const seatsWithStatus = sectionSeats.map(seat => ({
-                            ...seat,
-                            status: takenSeats.has(seat.seatId) ? 'reserved' : 'available'
-                          }));
+                          const seatsWithStatus = sectionSeats.map(seat => {
+                            const ticket = ticketsBySeatId[seat.seatId];
+                            return {
+                              ...seat,
+                              status: takenSeats.has(seat.seatId) ? 'reserved' : 'available',
+                              ownerUid: ticket?.ownerUid || null,
+                              ownerName: ticket?.ownerName || null,
+                              ownerEmail: ticket?.ownerEmail || null
+                            };
+                          });
                           setSectionSeatsForAdmin(seatsWithStatus);
                         }
                       };
@@ -390,28 +405,35 @@ export default function EventDetail() {
                                           const isUnavailable = sectionUnavailable && isTaken;
                                           const isSelected = selected.includes(seat.seatId);
                                           return (
-                                            <button
-                                              key={seat.seatId}
-                                              disabled={isTaken}
-                                              onClick={() => toggleSeat(seat.seatId)}
-                                              className={[
-                                                "px-2 py-1.5 rounded text-xs font-medium transition-all border",
-                                                isUnavailable
-                                                  ? "bg-gray-500 text-white cursor-not-allowed"
-                                                  : isTaken
-                                                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                                                  : "bg-white hover:bg-red-100",
-                                                isSelected ? "ring-2 ring-red-700 bg-yellow-100 font-bold" : "",
-                                                seat.isAda ? "bg-red-50" : "",
-                                              ].join(" ")}
-                                              style={{ minWidth: '2rem' }}
-                                              aria-label={`Seat ${seat.label}${seat.isAda ? " (ADA)" : ""}${
-                                                isUnavailable ? " (Unavailable)" : isTaken ? " (Taken)" : ""
-                                              }`}
-                                              title={seat.label}
-                                            >
-                                              {seat.label.replace(/^[A-Z]+/,'')}
-                                            </button>
+                                            <div key={seat.seatId} className="flex flex-col items-center">
+                                              <img 
+                                                src="/seaticon.png" 
+                                                alt="Seat" 
+                                                className="w-8 h-auto mb-0.5"
+                                                style={{ minWidth: '2rem' }}
+                                              />
+                                              <button
+                                                disabled={isTaken}
+                                                onClick={() => toggleSeat(seat.seatId)}
+                                                className={[
+                                                  "px-2 py-1.5 rounded text-xs font-medium transition-all border",
+                                                  isUnavailable
+                                                    ? "bg-gray-500 text-white cursor-not-allowed"
+                                                    : isTaken
+                                                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                                                    : "bg-white hover:bg-red-100",
+                                                  isSelected ? "ring-2 ring-red-700 bg-yellow-100 font-bold" : "",
+                                                  seat.isAda ? "bg-red-50" : "",
+                                                ].join(" ")}
+                                                style={{ minWidth: '2rem' }}
+                                                aria-label={`Seat ${seat.label}${seat.isAda ? " (ADA)" : ""}${
+                                                  isUnavailable ? " (Unavailable)" : isTaken ? " (Taken)" : ""
+                                                }`}
+                                                title={seat.label}
+                                              >
+                                                {seat.label.replace(/^[A-Z]+/,'')}
+                                              </button>
+                                            </div>
                                           );
                                         })}
                                       </div>
@@ -466,25 +488,46 @@ export default function EventDetail() {
                                           <div className="max-h-96 overflow-y-auto space-y-1">
                                             {sectionSeatsForAdmin.map((seat) => (
                                               <div key={seat.seatId} className="flex items-center justify-between p-2 bg-white border rounded hover:bg-gray-50">
-                                                <span className="text-sm font-medium text-gray-700 w-24">
-                                                  {seat.label}
-                                                </span>
-                                                <select
-                                                  value={seat.status}
-                                                  onChange={(e) => updateSeatStatus(seat.seatId, e.target.value)}
-                                                  className="text-sm border rounded px-2 py-1 bg-white text-black"
-                                                >
-                                                  <option value="available">Available</option>
-                                                  <option value="reserved">Reserved</option>
-                                                  <option value="unavailable">Unavailable</option>
-                                                </select>
-                                                <span className={`text-xs px-2 py-1 rounded ${
-                                                  seat.status === 'available' ? 'bg-green-100 text-green-700' :
-                                                  seat.status === 'reserved' ? 'bg-yellow-100 text-yellow-700' :
-                                                  'bg-red-100 text-red-700'
-                                                }`}>
-                                                  {seat.status}
-                                                </span>
+                                                <div className="flex items-center gap-4 flex-1">
+                                                  <span className="text-sm font-medium text-gray-700 w-24">
+                                                    {seat.label}
+                                                  </span>
+                                                  {seat.ownerUid && seat.ownerUid !== 'ADMIN_RESERVED' && seat.ownerUid !== 'ADMIN_UNAVAILABLE' && (
+                                                    <div className="flex-1 text-xs text-gray-600">
+                                                      <div className="font-semibold">UID: {seat.ownerUid}</div>
+                                                      {seat.ownerName && <div>Name: {seat.ownerName}</div>}
+                                                      {seat.ownerEmail && <div>Email: {seat.ownerEmail}</div>}
+                                                    </div>
+                                                  )}
+                                                  {seat.ownerUid === 'ADMIN_RESERVED' && (
+                                                    <div className="flex-1 text-xs text-yellow-700 font-medium">
+                                                      Admin Reserved
+                                                    </div>
+                                                  )}
+                                                  {seat.ownerUid === 'ADMIN_UNAVAILABLE' && (
+                                                    <div className="flex-1 text-xs text-red-700 font-medium">
+                                                      Admin Unavailable
+                                                    </div>
+                                                  )}
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                  <select
+                                                    value={seat.status}
+                                                    onChange={(e) => updateSeatStatus(seat.seatId, e.target.value)}
+                                                    className="text-sm border rounded px-2 py-1 bg-white text-black"
+                                                  >
+                                                    <option value="available">Available</option>
+                                                    <option value="reserved">Reserved</option>
+                                                    <option value="unavailable">Unavailable</option>
+                                                  </select>
+                                                  <span className={`text-xs px-2 py-1 rounded ${
+                                                    seat.status === 'available' ? 'bg-green-100 text-green-700' :
+                                                    seat.status === 'reserved' ? 'bg-yellow-100 text-yellow-700' :
+                                                    'bg-red-100 text-red-700'
+                                                  }`}>
+                                                    {seat.status}
+                                                  </span>
+                                                </div>
                                               </div>
                                             ))}
                                           </div>
