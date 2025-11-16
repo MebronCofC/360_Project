@@ -146,21 +146,26 @@ const Home = () => {
             <div className="flex gap-6 items-start">
                 {/* Main white backdrop containing everything */}
                 <div className="flex-1 bg-white/95 backdrop-blur-sm border border-gray-300 rounded-2xl p-6 shadow-lg">
-                <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-8">
-                    <div className="flex items-center justify-center gap-2 sm:gap-4 md:gap-6">
-                        <img
-                            src="/cougarCourtsideLOGO.png"
-                            alt="Cougar Courtside Logo"
-                            className="h-16 sm:h-20 md:h-28 lg:h-32 w-auto flex-shrink-1 drop-shadow-lg border-2 border-gray-800 rounded"
-                        />
-                        <span className="text-center min-w-0 flex-shrink-1">Welcome to Cougar Courtside</span>
-                        <img
-                            src="/CofC_Logo.png"
-                            alt="College of Charleston Logo"
-                            className="h-16 sm:h-20 md:h-28 lg:h-32 w-auto flex-shrink-1 drop-shadow-lg border-2 border-gray-800 rounded"
-                        />
-                    </div>
-                </h1>
+                {/* Maroon header band behind title + logos */}
+                <div className="mb-8">
+                  <div className="bg-red-900 rounded-2xl px-4 sm:px-6 py-3 sm:py-4 shadow-md">
+                    <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white">
+                        <div className="flex items-center justify-center gap-2 sm:gap-4 md:gap-6">
+                            <img
+                                src="/cougarCourtsideLOGO.png"
+                                alt="Cougar Courtside Logo"
+                                className="h-16 sm:h-20 md:h-28 lg:h-32 w-auto flex-shrink-1 drop-shadow-lg border-2 border-white rounded"
+                            />
+                            <span className="text-center min-w-0 flex-shrink-1">Welcome to Cougar Courtside</span>
+                            <img
+                                src="/CofC_Logo.png"
+                                alt="College of Charleston Logo"
+                                className="h-16 sm:h-20 md:h-28 lg:h-32 w-auto flex-shrink-1 drop-shadow-lg border-2 border-white rounded"
+                            />
+                        </div>
+                    </h1>
+                  </div>
+                </div>
 
                 {/* Auto-scrolling Image Carousel */}
                 <div className="mb-8 border border-gray-300 rounded-2xl overflow-hidden shadow-md">
