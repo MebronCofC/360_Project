@@ -158,7 +158,7 @@ const Home = () => {
                             />
                             <span className="text-center min-w-0 flex-shrink-1">Welcome to Cougar Courtside</span>
                                                         {/* CofC logo on solid white background (no rounded corners) for readability over maroon */}
-                                                        <span className="inline-block bg-white flex-shrink-1 drop-shadow-lg">
+                                                        <span className="inline-block bg-white flex-shrink-1 drop-shadow-lg px-[20px]">
                                                             <img
                                                                     src="/CofC_Logo.png"
                                                                     alt="College of Charleston Logo"
