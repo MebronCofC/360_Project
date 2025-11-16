@@ -191,9 +191,9 @@ const Home = () => {
                     </div>
                 </div>
 
-            {/* Current Events Section */}
+        {/* Current Events Section */}
             <section className="mb-12">
-                    <h2 className="text-2xl font-semibold mb-4 bg-green-600 text-white rounded-lg px-6 py-3 inline-block shadow-md">
+            <h2 className="text-2xl font-semibold mb-4 bg-red-900 text-white rounded-xl px-6 py-3 w-full block shadow-md">
                         🔴 Live Now at TD Arena
                     </h2>
                     {currentEvents.length > 0 ? (
@@ -242,9 +242,9 @@ const Home = () => {
                     )}
             </section>
 
-            {/* Upcoming Events Section */}
+        {/* Upcoming Events Section */}
             <section>
-                    <h2 className="text-2xl font-semibold mb-4 bg-purple-600 text-white rounded-lg px-6 py-3 inline-block shadow-md">
+            <h2 className="text-2xl font-semibold mb-4 bg-red-900 text-white rounded-xl px-6 py-3 w-full block shadow-md">
                         📅 Upcoming Events
                     </h2>
                     {upcomingEvents.length > 0 ? (
@@ -292,9 +292,9 @@ const Home = () => {
                     )}
             </section>
 
-            {/* Past Events Section */}
+        {/* Past Events Section */}
             <section className="mt-12">
-                    <h2 className="text-2xl font-semibold mb-4 bg-gray-700 text-white rounded-lg px-6 py-3 inline-block shadow-md">
+            <h2 className="text-2xl font-semibold mb-4 bg-red-900 text-white rounded-xl px-6 py-3 w-full block shadow-md">
                         🕓 Recent Past Events
                     </h2>
                     {pastEvents.length > 0 ? (
