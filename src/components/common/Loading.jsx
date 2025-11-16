@@ -8,7 +8,7 @@ export default function Loading({ message = "Loading" }) {
           <img 
             src="/CofC_Logo.png" 
             alt="College of Charleston" 
-            className="w-[30px] h-auto animate-pulse"
+            className="w-[150px] h-auto animate-pulse"
           />
           <p className="text-gray-600 text-lg">{message}</p>
         </div>
