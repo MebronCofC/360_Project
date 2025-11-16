@@ -191,8 +191,11 @@ export default function MyTickets() {
                 <div className="text-sm text-gray-600">Status</div>
                 {(() => {
                   const isInvalid = t.status === 'Invalid' || !!t.invalidReason || invalidEventIds.has(t.eventId);
-                  const label = isInvalid ? `Invalid - ${t.invalidReason || 'The Event has been cancelled'}` : (t.status || 'Issued');
-                  const classes = isInvalid ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+                  const isRevoked = String(t.status).toLowerCase() === 'revoked';
+                  let label = t.status || 'Issued';
+                  if (isInvalid) label = `Invalid - ${t.invalidReason || 'The Event has been cancelled'}`;
+                  const classes = (isInvalid || isRevoked) ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+                  if (isRevoked) label = 'Revoked';
                   return (
                     <div className={`px-3 py-1 ${classes} text-xs font-semibold rounded-full`}>{label}</div>
                   );
@@ -203,8 +206,12 @@ export default function MyTickets() {
             {/* QR Code Section */}
             <div className="mb-3 p-3 bg-gray-50 rounded border border-gray-200">
               <div className="font-semibold mb-2">QR Code</div>
-              <div className="flex items-center justify-center">
-                <QRCodeCanvas value={t.qrPayload || ''} size={160} includeMargin={true} />
+              <div className="flex items-center justify-center min-h-[170px]">
+                {String(t.status).toLowerCase() === 'revoked' ? (
+                  <div className="text-sm text-red-700 bg-red-50 px-3 py-2 rounded">Ticket revoked — QR removed</div>
+                ) : (
+                  <QRCodeCanvas value={t.qrPayload || ''} size={160} includeMargin={true} />
+                )}
               </div>
             </div>
             

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { getEvents, seatsForEvent, getSeatsForEvent } from "../../data/events";
 import { assignSeats, getAssignedSeats, getEventInventory } from "../../data/seatAssignments";
-import { getTicketsForEventFromDB } from "../../firebase/firestore";
+import { getTicketsForEventFromDB, revokeTicketForSeatInDB } from "../../firebase/firestore";
 import { useAuth } from "../../contexts/authContext";
 import InteractiveSeatingChart from "../seating-chart";
 import Loading from "../common/Loading";
@@ -513,12 +513,28 @@ export default function EventDetail() {
                                                 <div className="flex items-center gap-2">
                                                   <select
                                                     value={seat.status}
-                                                    onChange={(e) => updateSeatStatus(seat.seatId, e.target.value)}
+                                                    onChange={async (e) => {
+                                                      const val = e.target.value;
+                                                      if (val === 'revoke') {
+                                                        try {
+                                                          await revokeTicketForSeatInDB(eventId, seat.seatId);
+                                                          await toggleSectionExpanded(expandedSection); // refresh section
+                                                          const takenSeats = await getAssignedSeats(eventId);
+                                                          setTaken(takenSeats || new Set());
+                                                        } catch (err) {
+                                                          console.error('Failed to revoke ticket', err);
+                                                          alert('Failed to revoke ticket');
+                                                        }
+                                                        return;
+                                                      }
+                                                      updateSeatStatus(seat.seatId, val);
+                                                    }}
                                                     className="text-sm border rounded px-2 py-1 bg-white text-black"
                                                   >
                                                     <option value="available">Available</option>
                                                     <option value="reserved">Reserved</option>
                                                     <option value="unavailable">Unavailable</option>
+                                                    {seat.status === 'reserved' && <option value="revoke">Revoke (invalidate ticket)</option>}
                                                   </select>
                                                   <span className={`text-xs px-2 py-1 rounded ${
                                                     seat.status === 'available' ? 'bg-green-100 text-green-700' :

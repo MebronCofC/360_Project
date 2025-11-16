@@ -480,9 +480,11 @@ export async function deleteTicketFromDB(ticketId) {
 export async function checkSeatsAvailability(eventId, seatIds) {
   try {
     const ticketsCol = collection(db, "tickets");
+    // Only consider active, issued tickets when checking availability
     const q = query(
-      ticketsCol, 
-      where("eventId", "==", eventId)
+      ticketsCol,
+      where("eventId", "==", eventId),
+      where("status", "==", "Issued")
     );
     const snapshot = await getDocs(q);
     
@@ -652,6 +654,59 @@ export async function releaseSeatInDB(eventId, seatId, ownerUid) {
     }
   } catch (error) {
     console.error("Error releasing seat:", error);
+    throw error;
+  }
+}
+
+// Revoke a ticket for a specific seat (admin action):
+// - Marks ticket status as "Revoked"
+// - Clears QR payload
+// - Updates aggregated inventory counts (decrement taken/unavailable and totalSeatsSold when applicable)
+export async function revokeTicketForSeatInDB(eventId, seatId) {
+  try {
+    const ticketsCol = collection(db, "tickets");
+    const q = query(
+      ticketsCol,
+      where("eventId", "==", eventId),
+      where("seatId", "==", seatId)
+    );
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return false;
+
+    const docSnap = snapshot.docs[0];
+    const data = docSnap.data();
+    const section = String(seatId).split('-')[0];
+    const isUnavailable = String(data.ownerUid || '').toUpperCase() === 'ADMIN_UNAVAILABLE';
+
+    // Update ticket to Revoked and clear QR code; keep the document for user visibility
+    await updateDoc(docSnap.ref, {
+      status: "Revoked",
+      revokedAt: serverTimestamp(),
+      qrPayload: null,
+      updatedAt: serverTimestamp(),
+    });
+
+    // Update inventory in a separate operation
+    try {
+      const invRef = doc(db, "eventInventories", eventId);
+      const invUpdates = {
+        updatedAt: serverTimestamp(),
+        sections: {
+          [section]: isUnavailable
+            ? { unavailable: increment(-1) }
+            : { taken: increment(-1) }
+        }
+      };
+      if (!isUnavailable) {
+        invUpdates.totalSeatsSold = increment(-1);
+      }
+      await setDoc(invRef, invUpdates, { merge: true });
+    } catch (invError) {
+      console.warn("Inventory update failed (ticket still revoked):", invError);
+    }
+    return true;
+  } catch (error) {
+    console.error("Error revoking ticket:", error);
     throw error;
   }
 }

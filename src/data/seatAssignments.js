@@ -15,7 +15,11 @@ export async function getAssignedSeats(eventId) {
     // Get all tickets for this event from Firestore
     const tickets = await getTicketsForEventFromDB(eventId);
     // Extract the seatIds and return as a Set
-    const seatIds = tickets.map(ticket => ticket.seatId);
+    // Only consider active issued tickets; ignore Revoked/Invalid
+    const seatIds = tickets
+      .filter(t => (t.status || 'Issued') === 'Issued')
+      .map(ticket => ticket.seatId)
+      .filter(Boolean);
     return new Set(seatIds);
   } catch (error) {
     console.error("Error getting assigned seats:", error);
@@ -100,6 +104,7 @@ export async function getEventInventory(eventId) {
     const unavailableBySection = {}; // seats explicitly marked unavailable by admin
     const reservedBySection = {};    // seats reserved by admin
     for (const t of tickets) {
+      if ((t.status || 'Issued') !== 'Issued') continue; // ignore revoked/invalid tickets
       if (!t.seatId) continue;
       const section = String(t.seatId).split('-')[0];
       bySection[section] = (bySection[section] || 0) + 1;
