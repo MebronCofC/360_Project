@@ -31,9 +31,8 @@ export default function EspnCarousel({ espnUrl }) {
 
   return (
     <div className="bg-white/95 backdrop-blur-sm border border-gray-300 rounded-2xl p-4 shadow-lg w-80">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-start mb-2">
         <h2 className="text-lg font-bold text-gray-900">ESPN Live: CofC Men's Basketball</h2>
-        <img src="/CofC_Logo.png" alt="CofC" className="h-6 w-auto" />
       </div>
 
       <div className="relative h-36 overflow-hidden rounded-lg border border-gray-200 bg-white">
