@@ -56,17 +56,18 @@ export default function MyTickets() {
     const t = tickets.find(x => x.id === ticketId);
 
     if (t) {
+      // Try to remove the ticket, but only show an alert if the ticket is not actually removed
+      let removed = false;
       try {
         // Free the seat only if this user owns it
-        await releaseSeat(t.eventId, t.seatId, currentUser?.uid || null);
-        
-        // Delete ticket from Firestore
-        await deleteTicketFromDB(ticketId);
-
-        // Update local state to reflect removal immediately
-        setTickets(prev => prev.filter(x => x.id !== ticketId));
+        removed = await releaseSeat(t.eventId, t.seatId, currentUser?.uid || null);
       } catch (error) {
-        console.error('Error removing ticket:', error);
+        // If releaseSeat throws, removed will be false
+        removed = false;
+      }
+      if (removed) {
+        window.location.reload();
+      } else {
         alert('Failed to remove ticket');
       }
     }
@@ -76,7 +77,13 @@ export default function MyTickets() {
     return <div className="max-w-3xl mx-auto p-6 mt-12">Please log in to view your tickets.</div>;
   }
   if (!tickets.length) {
-    return <div className="max-w-3xl mx-auto p-6 mt-12">No tickets yet.</div>;
+    return (
+      <div className="max-w-3xl mx-auto p-6 mt-12">
+        <div className="bg-white/95 backdrop-blur-sm border border-gray-300 rounded-2xl p-12 shadow-lg text-center">
+          <p className="text-xl text-gray-600">You do not have any tickets</p>
+        </div>
+      </div>
+    );
   }
 
   // Group tickets by event
