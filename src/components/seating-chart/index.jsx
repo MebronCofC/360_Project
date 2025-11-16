@@ -107,7 +107,7 @@ export default function InteractiveSeatingChart({ eventId }) {
     <div className="relative w-full max-w-4xl mx-auto">
       {/* Instruction text above chart */}
       <div className="text-center mb-4 text-sm text-gray-700 font-semibold">
-        💡 Click any purple section number to view available seats 💡
+        💡 Click a section area on the map to view available seats 💡
       </div>
       {/* Seating Chart Image */}
       <div className="relative">
@@ -117,33 +117,44 @@ export default function InteractiveSeatingChart({ eventId }) {
           className="w-full h-auto"
         />
         
-        {/* Clickable Section Overlays with Purple Boxes */}
+        {/* Invisible clickable section overlays (preserve hitboxes, hide visuals) */}
         {sections.map((section, idx) => {
           const sectionId = String(section.number || section.label);
           const isFullyUnavailable = unavailableSections.has(sectionId);
           const isSoldOut = soldOutSections.has(sectionId);
+          const isSpecial = Boolean(section.special);
           let label = section.number || section.label;
           if (isFullyUnavailable || isSoldOut) label = "No More Seats Available";
           return (
             <button
               key={idx}
-              onClick={() => (!isSoldOut && !isFullyUnavailable) && handleSectionClick(section.number || section.label)}
-              disabled={isSoldOut || isFullyUnavailable}
-              className={`absolute transition-all rounded border-2 border-white flex items-center justify-center font-bold hover:scale-110 
-                ${isFullyUnavailable ? 'bg-gray-500 bg-opacity-90 cursor-not-allowed text-white' : isSoldOut ? 'bg-gray-400 bg-opacity-90 cursor-not-allowed text-gray-900' : 'bg-purple-600 bg-opacity-70 hover:bg-opacity-90 cursor-pointer text-white'}`}
+              onClick={() => {
+                if (isSoldOut || isFullyUnavailable || isSpecial) return;
+                handleSectionClick(section.number || section.label);
+              }}
+              disabled={isSoldOut || isFullyUnavailable || isSpecial}
+              className={`absolute transition-none flex items-center justify-center font-bold 
+                ${isSoldOut || isFullyUnavailable || isSpecial ? 'cursor-not-allowed' : 'cursor-pointer'}`}
               style={{
                 left: section.left,
                 top: section.top,
                 width: section.width,
                 height: section.height,
-                fontSize: (isSoldOut || isFullyUnavailable) ? '0.62rem' : (section.special ? '0.6rem' : '0.8rem'),
+                // Make overlays fully invisible while keeping them clickable
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: 'transparent',
                 textAlign: 'center',
-                padding: '4px'
+                padding: 0,
+                outline: 'none'
               }}
               title={isFullyUnavailable ? 'Seats are unavailable' : isSoldOut ? 'No More Seats Available' : (section.special ? section.label : `Section ${section.number}`)}
               aria-label={isFullyUnavailable ? 'This section has been marked unavailable' : isSoldOut ? 'This section is sold out' : (section.special ? section.label : `Click to select seats in section ${section.number}`)}
             >
-              {label}
+              {/* Keep content present for screen readers but invisible visually */}
+              <span style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}>
+                {label}
+              </span>
             </button>
           );
         })}
