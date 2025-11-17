@@ -66,6 +66,38 @@ export async function upsertUserProfileInDB(user) {
   }
 }
 
+// Save/Update user's phone number in profile (E.164 string)
+export async function saveUserPhoneNumberInDB(uid, e164Phone) {
+  try {
+    if (!uid || !e164Phone) return;
+    const userRef = doc(db, 'users', uid);
+    await setDoc(userRef, {
+      phone: e164Phone,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (e) {
+    console.warn('Failed to save user phone number', e);
+  }
+}
+
+// ==================== MESSAGING TOKENS ====================
+// Store/update a user's FCM device token for push notifications
+export async function saveFcmTokenForUser(uid, token) {
+  try {
+    if (!uid || !token) return;
+    const ref = doc(db, 'userTokens', uid);
+    // Store as map of token -> true for easy set membership and dedupe
+    await setDoc(ref, {
+      tokens: {
+        [token]: true
+      },
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (e) {
+    console.warn('Failed to save FCM token for user', uid, e);
+  }
+}
+
 // ================ PUBLIC INVENTORY (AGGREGATED) HELPERS =================
 // Read aggregated event inventory (public)
 export async function getEventInventoryDocFromDB(eventId) {

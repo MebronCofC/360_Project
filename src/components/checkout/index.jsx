@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { areAvailable, assignSeats } from "../../data/seatAssignments";
 import { useAuth } from "../../contexts/authContext";
-import { getTicketsForUserFromDB } from "../../firebase/firestore";
+import { getTicketsForUserFromDB, saveUserPhoneNumberInDB } from "../../firebase/firestore";
 import { QRCodeCanvas } from "qrcode.react";
 import { validateAndNormalizePhone, formatPhoneForDisplay } from "../../utils/phoneUtils";
 import { sendTicketSMS } from "../../services/smsService";
@@ -57,6 +57,8 @@ export default function Checkout() {
     }
     setPhoneError('');
     const normalizedPhone = phoneValidation.normalized;
+    // Save phone on profile for records
+    try { await saveUserPhoneNumberInDB(ownerUid, normalizedPhone); } catch {}
   
   // 1) check for conflicts (already owned seats)
   const conflicts = await areAvailable(pending.eventId, pending.seats);
@@ -95,19 +97,19 @@ export default function Checkout() {
     const newTickets = tickets.filter(t => t.orderId === newOrderId);
     setPurchasedTickets(newTickets);
     
-      // Send SMS with tickets
-      setSmsStatus('Sending tickets to your phone...');
-      const smsResult = await sendTicketSMS(
+      // Send a Firebase push notification (no third-party SMS)
+      setSmsStatus('Sending a notification to your device...');
+      const result = await sendTicketSMS(
         normalizedPhone,
         newTickets,
         pending.eventTitle,
         newOrderId
       );
     
-      if (smsResult.success) {
-        setSmsStatus(`✅ Tickets sent to ${formatPhoneForDisplay(normalizedPhone)}`);
+      if (result.success) {
+        setSmsStatus('✅ Notification sent. You can also view tickets below or in My Tickets.');
       } else {
-        setSmsStatus(`⚠️ ${smsResult.message}`);
+        setSmsStatus(`⚠️ ${result.message}`);
       }
   } catch (e) {
     console.error('Error assigning seats:', e);
@@ -145,7 +147,7 @@ export default function Checkout() {
                 📱 Phone Number <span className="text-red-500">*</span>
               </label>
               <p className="text-xs text-gray-600 mb-3">
-                Required to receive your tickets via text message with QR codes
+                Required for your account record. After purchase, you’ll receive a push notification with your ticket link.
               </p>
               <input
                 type="tel"

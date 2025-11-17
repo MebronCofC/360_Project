@@ -43,22 +43,22 @@ export async function sendTicketSMS(phoneNumber, tickets, eventTitle, orderId) {
     };
 
     try {
-      // Call Firebase Cloud Function
-  const sendSMS = httpsCallable(functionsInstance, 'sendTicketSMS');
-      const result = await sendSMS(smsData);
-      
+      // Call Firebase Cloud Function (Firebase-only push notification)
+      const sendNotification = httpsCallable(functionsInstance, 'sendTicketNotification');
+      const result = await sendNotification({
+        tickets: smsData.tickets,
+        eventTitle,
+        orderId
+      });
       return {
-        success: true,
-        message: result.data.message || `Tickets sent to ${phoneNumber}`
+        success: !!result?.data?.success,
+        message: result?.data?.success ? 'Notification sent to your device' : (result?.data?.message || 'No device registered for notifications')
       };
     } catch (functionError) {
-      // If Cloud Function not deployed yet, log and show graceful message
-      console.warn('Cloud Function not available:', functionError);
-      console.log('SMS Data prepared (function not deployed):', smsData);
-      
+      console.warn('Notification function error:', functionError);
       return {
-        success: true,
-        message: `Tickets ready! (SMS feature will be enabled once Cloud Function is deployed)`
+        success: false,
+        message: 'Unable to send push notification. You can view your tickets in My Tickets.'
       };
     }
     
