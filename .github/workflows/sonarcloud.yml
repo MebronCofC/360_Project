@@ -36,7 +36,7 @@ on:
 jobs:
   sonarqube:
     name: SonarQube
-    runs-on: windows-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
         with:
