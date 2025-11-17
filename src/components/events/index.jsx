@@ -12,6 +12,7 @@ export default function Events() {
   const [loading, setLoading] = useState(true);
   const [showChartForEvent, setShowChartForEvent] = useState(null);
   const [editingEvent, setEditingEvent] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     loadEvents();
@@ -31,6 +32,8 @@ export default function Events() {
 
   const onAdd = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return; // Prevent double submission
+    
     const form = e.target;
     const title = form.title.value.trim();
     const description = form.description.value.trim();
@@ -47,6 +50,7 @@ export default function Events() {
       return;
     }
     
+    setIsSubmitting(true);
     try {
       const newEv = { title, description, startTime, endTime, venueId, basePrice };
       await addEvent(newEv);
@@ -55,6 +59,8 @@ export default function Events() {
     } catch (error) {
       console.error("Error adding event:", error);
       alert("Failed to add event. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -84,6 +90,8 @@ export default function Events() {
 
   const onSaveEdit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return; // Prevent double submission
+    
     const form = e.target;
     const title = form.title.value.trim();
     const description = form.description.value.trim();
@@ -100,6 +108,7 @@ export default function Events() {
       return;
     }
     
+    setIsSubmitting(true);
     try {
       await updateEvent(editingEvent.id, { title, description, startTime, endTime, venueId, basePrice });
       await loadEvents();
@@ -107,6 +116,8 @@ export default function Events() {
     } catch (error) {
       console.error("Error updating event:", error);
       alert("Failed to update event. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -164,7 +175,14 @@ export default function Events() {
             <input name="endTime" type="datetime-local" className="px-3 py-2 rounded text-black bg-white" />
             <input name="venueId" placeholder="Venue" className="px-3 py-2 rounded text-black bg-white col-span-2" />
             <input name="basePrice" placeholder="Base price" type="number" className="px-3 py-2 rounded text-black bg-white col-span-2" />
-            <button type="submit" className="admin-btn col-span-2" style={{backgroundColor:'#7c3aed'}}>Add Event</button>
+            <button 
+              type="submit" 
+              disabled={isSubmitting}
+              className="admin-btn col-span-2" 
+              style={{backgroundColor: isSubmitting ? '#a78bfa' : '#7c3aed', cursor: isSubmitting ? 'not-allowed' : 'pointer'}}
+            >
+              {isSubmitting ? 'Adding...' : 'Add Event'}
+            </button>
           </form>
           <div className="text-sm mb-2 text-black">Remove events using the button next to each event below.</div>
         </div>
@@ -268,15 +286,18 @@ export default function Events() {
                 <button
                   type="button"
                   onClick={() => setEditingEvent(null)}
+                  disabled={isSubmitting}
                   className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
                 >
                   Cancel
                 </button>
                 <button 
-                  type="submit" 
+                  type="submit"
+                  disabled={isSubmitting}
                   className="px-4 py-2 bg-purple-600 text-white hover:bg-purple-700 rounded-lg"
+                  style={{backgroundColor: isSubmitting ? '#a78bfa' : '', cursor: isSubmitting ? 'not-allowed' : 'pointer'}}
                 >
-                  Save Changes
+                  {isSubmitting ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>

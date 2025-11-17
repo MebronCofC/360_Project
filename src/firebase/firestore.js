@@ -727,11 +727,20 @@ export async function assignSeatsAtomicInDB(eventId, seatIds, ownerUid, eventTit
   const created = [];
   const reused = [];
   const taken = [];
+  
   try {
     await runTransaction(db, async (tx) => {
+      // PHASE 1: Perform ALL reads first (Firestore requirement)
+      const existingSnapshots = [];
       for (const seatId of seatIds) {
         const ticketRef = doc(ticketsCol, `${eventId}_${seatId}`);
         const existingSnap = await tx.get(ticketRef);
+        existingSnapshots.push({ seatId, ticketRef, existingSnap });
+      }
+      
+      // PHASE 2: Process reads and determine which seats to write
+      const seatsToCreate = [];
+      for (const { seatId, ticketRef, existingSnap } of existingSnapshots) {
         if (existingSnap.exists()) {
           const data = existingSnap.data();
           // Only consider active issued tickets as blockers
@@ -747,7 +756,17 @@ export async function assignSeatsAtomicInDB(eventId, seatIds, ownerUid, eventTit
           }
           // Revoked/Invalid ticket: we can reissue
         }
-        if (taken.includes(seatId)) continue; // safety
+        // Queue this seat for creation
+        seatsToCreate.push({ seatId, ticketRef });
+      }
+      
+      // If any seats are taken, abort before writing
+      if (taken.length > 0) {
+        throw new Error(`Seats already taken: ${taken.join(', ')}`);
+      }
+      
+      // PHASE 3: Perform ALL writes
+      for (const { seatId, ticketRef } of seatsToCreate) {
         const section = String(seatId).split('-')[0];
         tx.set(ticketRef, {
           ticketId: `${eventId}_${seatId}`,
@@ -766,10 +785,6 @@ export async function assignSeatsAtomicInDB(eventId, seatIds, ownerUid, eventTit
           createdAt: serverTimestamp()
         });
         created.push(seatId);
-      }
-      if (taken.length) {
-        // Abort transaction – throw after evaluating all seats so user sees full list
-        throw new Error(`Seats already taken: ${taken.join(', ')}`);
       }
     });
   } catch (err) {
