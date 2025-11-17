@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper: check if user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Helper: check if user is admin (by email)
+    function isAdmin() {
+      return isSignedIn() && 
+             (request.auth.token.email == 'mebneon@gmail.com' || 
+              request.auth.token.email == 'johnsonns@g.cofc.edu');
+    }
+    
+    // Helper: check if user owns the resource
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // Users collection - users can read/write their own profile
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId) || isAdmin();
+    }
+    
+    // User tokens for FCM - users can only write their own tokens
+    match /userTokens/{userId} {
+      allow read: if isAdmin();
+      allow write: if isOwner(userId) || isAdmin();
+    }
+    
+    // Events - public read, admin write
+    match /events/{eventId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Past events - public read, admin write
+    match /pastEvents/{eventId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Seats - public read, admin write
+    match /seats/{seatId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Tickets - users can read their own tickets, admins can read all
+    // Allow users to create tickets (for seat purchases)
+    // Allow admins to create/update/delete any ticket (including ADMIN_RESERVED, ADMIN_UNAVAILABLE)
+    match /tickets/{ticketId} {
+      allow read: if isSignedIn() && (
+        resource.data.ownerUid == request.auth.uid || 
+        isAdmin()
+      );
+      allow create: if isSignedIn() && (
+        request.resource.data.ownerUid == request.auth.uid ||
+        isAdmin()
+      );
+      allow update, delete: if isSignedIn() && (
+        resource.data.ownerUid == request.auth.uid ||
+        isAdmin()
+      );
+    }
+    
+    // Event inventory - public read for UI, system/admin write
+    match /eventInventories/{eventId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // SMS logs - admin only
+    match /smsLogs/{logId} {
+      allow read, write: if isAdmin();
+    }
+    
+    // SMS errors - admin only
+    match /smsErrors/{errorId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
