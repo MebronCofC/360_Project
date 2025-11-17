@@ -2,11 +2,9 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { areAvailable, assignSeats } from "../../data/seatAssignments";
 import { useAuth } from "../../contexts/authContext";
-import { getTicketsForUserFromDB, saveUserPhoneNumberInDB } from "../../firebase/firestore";
+import { getTicketsForUserFromDB } from "../../firebase/firestore";
 import { QRCodeCanvas } from "qrcode.react";
-import { validateAndNormalizePhone, formatPhoneForDisplay } from "../../utils/phoneUtils";
-import { sendTicketSMS } from "../../services/smsService";
-import { initMessagingForUser } from "../../firebase/messaging";
+ 
 
 
 
@@ -16,10 +14,7 @@ export default function Checkout() {
   const navigate = useNavigate();
   const [saved, setSaved] = useState(false);
   const [purchasedTickets, setPurchasedTickets] = useState([]);
-    const [phoneNumber, setPhoneNumber] = useState('');
-    const [phoneError, setPhoneError] = useState('');
-      const [smsStatus, setSmsStatus] = useState('');
-  const [notificationPermission, setNotificationPermission] = useState('default');
+  
 
   const pending = useMemo(() => {
     try { return JSON.parse(localStorage.getItem("pendingOrder") || "null"); }
@@ -33,28 +28,11 @@ export default function Checkout() {
 
   useEffect(() => {
     if (!pending) navigate("/events");
-    // Check notification permission status
-    if ('Notification' in window) {
-      setNotificationPermission(Notification.permission);
-    }
   }, [pending, navigate]);
   const processingRef = useRef(false);
   const [processing, setProcessing] = useState(false);
 
-  const handleEnableNotifications = async () => {
-    try {
-      const token = await initMessagingForUser(ownerUid);
-      if (token) {
-        setNotificationPermission('granted');
-        alert('✅ Notifications enabled! You\'ll receive updates about your tickets.');
-      } else {
-        alert('⚠️ Could not enable notifications. Please check your browser settings.');
-      }
-    } catch (e) {
-      console.error('Error enabling notifications:', e);
-      alert('⚠️ Could not enable notifications. Please check your browser settings.');
-    }
-  };
+  
 
   if (!pending) return null;
 
@@ -68,18 +46,7 @@ export default function Checkout() {
        return;
      }
   
-    // Validate phone number
-    const phoneValidation = validateAndNormalizePhone(phoneNumber);
-    if (!phoneValidation.isValid) {
-      setPhoneError(phoneValidation.error);
-      processingRef.current = false;
-      setProcessing(false);
-      return;
-    }
-    setPhoneError('');
-    const normalizedPhone = phoneValidation.normalized;
-    // Save phone on profile for records
-    try { await saveUserPhoneNumberInDB(ownerUid, normalizedPhone); } catch {}
+    
   
   // 1) check for conflicts (already owned seats)
   const conflicts = await areAvailable(pending.eventId, pending.seats);
@@ -118,24 +85,6 @@ export default function Checkout() {
     const newTickets = tickets.filter(t => t.orderId === newOrderId);
     setPurchasedTickets(newTickets);
     
-      // Ensure device token is registered before sending notification
-      console.log('[Checkout] Ensuring FCM token is registered...');
-      await initMessagingForUser(ownerUid);
-      
-      // Send a Firebase push notification (no third-party SMS)
-      setSmsStatus('Sending a notification to your device...');
-      const result = await sendTicketSMS(
-        normalizedPhone,
-        newTickets,
-        pending.eventTitle,
-        newOrderId
-      );
-    
-      if (result.success) {
-        setSmsStatus('✅ Notification sent. You can also view tickets below or in My Tickets.');
-      } else {
-        setSmsStatus('⚠️ ' + result.message + ' Your tickets are saved in My Tickets.');
-      }
   } catch (e) {
     console.error('Error assigning seats:', e);
     if (e.code === 'SEAT_TAKEN') {
@@ -167,54 +116,7 @@ export default function Checkout() {
 
       {!saved ? (
           <>
-            <div className="border rounded-xl p-4 bg-blue-50">
-              <label className="block mb-2 font-medium text-gray-700">
-                📱 Phone Number <span className="text-red-500">*</span>
-              </label>
-              <p className="text-xs text-gray-600 mb-3">
-                Required for your account record. After purchase, you’ll receive a push notification with your ticket link.
-              </p>
-              <input
-                type="tel"
-                value={phoneNumber}
-                onChange={(e) => {
-                  setPhoneNumber(e.target.value);
-                  setPhoneError('');
-                }}
-                placeholder="(843) 555-5555"
-                className={`w-full px-4 py-2 rounded-lg border ${
-                  phoneError ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                } focus:outline-none focus:ring-2 focus:ring-emerald-500`}
-              />
-              {phoneError && (
-                <p className="text-red-600 text-sm mt-2">⚠️ {phoneError}</p>
-              )}
-              <p className="text-xs text-gray-500 mt-2">
-                Accepted formats: (843) 555-5555, 843-555-5555, or 8435555555
-              </p>
-            </div>
-          
-          {notificationPermission !== 'granted' && (
-            <div className="border-2 border-orange-300 rounded-xl p-4 bg-orange-50">
-              <div className="flex items-start gap-3">
-                <span className="text-2xl">🔔</span>
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900 mb-2">
-                    Enable Push Notifications (Recommended)
-                  </p>
-                  <p className="text-sm text-gray-700 mb-3">
-                    Get instant updates about your tickets right in your browser. No app needed!
-                  </p>
-                  <button
-                    onClick={handleEnableNotifications}
-                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium"
-                  >
-                    Enable Notifications
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+            
           
         <button onClick={confirm} disabled={processing} className={`px-4 py-2 rounded-xl text-white ${processing ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'} transition-colors`}>
           {processing ? 'Processing...' : 'Confirm Purchase'}
@@ -223,15 +125,7 @@ export default function Checkout() {
       ) : (
         <div className="space-y-4">
           <div className="text-emerald-700 font-medium">Purchase complete — tickets issued.</div>
-            {smsStatus && (
-              <div className={`text-sm p-3 rounded-lg ${
-                smsStatus.includes('✅') ? 'bg-green-50 text-green-800' : 
-                smsStatus.includes('⚠️') ? 'bg-yellow-50 text-yellow-800' : 
-                'bg-blue-50 text-blue-800'
-              }`}>
-                {smsStatus}
-              </div>
-            )}
+            
           {orderId && (
             <div className="text-xs text-gray-500">Order ID: {orderId}</div>
           )}
