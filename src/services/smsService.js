@@ -13,7 +13,8 @@
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app } from '../firebase/firebase';
 
-const functions = getFunctions(app);
+// Ensure region matches deployed Cloud Function region
+const functionsInstance = getFunctions(app, 'us-central1');
 
 /**
  * Sends ticket confirmation via SMS
@@ -43,7 +44,7 @@ export async function sendTicketSMS(phoneNumber, tickets, eventTitle, orderId) {
 
     try {
       // Call Firebase Cloud Function
-      const sendSMS = httpsCallable(functions, 'sendTicketSMS');
+  const sendSMS = httpsCallable(functionsInstance, 'sendTicketSMS');
       const result = await sendSMS(smsData);
       
       return {
