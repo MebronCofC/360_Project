@@ -60,10 +60,23 @@ Select:
 
 ### Step 4: Configure Twilio in Firebase
 
+Choose ONE authentication method:
+
+- Recommended (API Key) — safer than master Auth Token
+
+```bash
+firebase functions:config:set twilio.api_key_sid="YOUR_API_KEY_SID"
+firebase functions:config:set twilio.api_key_secret="YOUR_API_KEY_SECRET"
+firebase functions:config:set twilio.account_sid="YOUR_ACCOUNT_SID"
+firebase functions:config:set twilio.phone_number="YOUR_TWILIO_PHONE" # format: +1XXXXXXXXXX
+```
+
+- Alternative (Account SID + Auth Token)
+
 ```bash
 firebase functions:config:set twilio.account_sid="YOUR_ACCOUNT_SID"
 firebase functions:config:set twilio.auth_token="YOUR_AUTH_TOKEN"
-firebase functions:config:set twilio.phone_number="YOUR_TWILIO_PHONE"
+firebase functions:config:set twilio.phone_number="YOUR_TWILIO_PHONE" # format: +1XXXXXXXXXX
 ```
 
 ### Step 5: Install Dependencies
@@ -159,6 +172,7 @@ functions/
 - Check Twilio console for message status
 - Verify phone number is correct
 - Check Twilio account balance
+- If using API Key, ensure twilio.api_key_sid and twilio.api_key_secret are both set (and twilio.account_sid)
 - Review Firebase Functions logs: `firebase functions:log`
 
 ## Security Notes

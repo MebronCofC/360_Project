@@ -1,2 +1,2 @@
-// Export functions for notifications (Firebase-only)
-exports.sendTicketNotification = require('./notifyTickets').sendTicketNotification;
+// No Cloud Functions are currently exported.
+// Messaging/notification functions have been removed from this project.

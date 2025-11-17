@@ -6,6 +6,7 @@ import { getTicketsForUserFromDB, saveUserPhoneNumberInDB } from "../../firebase
 import { QRCodeCanvas } from "qrcode.react";
 import { validateAndNormalizePhone, formatPhoneForDisplay } from "../../utils/phoneUtils";
 import { sendTicketSMS } from "../../services/smsService";
+import { initMessagingForUser } from "../../firebase/messaging";
 
 
 
@@ -18,6 +19,7 @@ export default function Checkout() {
     const [phoneNumber, setPhoneNumber] = useState('');
     const [phoneError, setPhoneError] = useState('');
       const [smsStatus, setSmsStatus] = useState('');
+  const [notificationPermission, setNotificationPermission] = useState('default');
 
   const pending = useMemo(() => {
     try { return JSON.parse(localStorage.getItem("pendingOrder") || "null"); }
@@ -31,9 +33,28 @@ export default function Checkout() {
 
   useEffect(() => {
     if (!pending) navigate("/events");
+    // Check notification permission status
+    if ('Notification' in window) {
+      setNotificationPermission(Notification.permission);
+    }
   }, [pending, navigate]);
   const processingRef = useRef(false);
   const [processing, setProcessing] = useState(false);
+
+  const handleEnableNotifications = async () => {
+    try {
+      const token = await initMessagingForUser(ownerUid);
+      if (token) {
+        setNotificationPermission('granted');
+        alert('✅ Notifications enabled! You\'ll receive updates about your tickets.');
+      } else {
+        alert('⚠️ Could not enable notifications. Please check your browser settings.');
+      }
+    } catch (e) {
+      console.error('Error enabling notifications:', e);
+      alert('⚠️ Could not enable notifications. Please check your browser settings.');
+    }
+  };
 
   if (!pending) return null;
 
@@ -97,6 +118,10 @@ export default function Checkout() {
     const newTickets = tickets.filter(t => t.orderId === newOrderId);
     setPurchasedTickets(newTickets);
     
+      // Ensure device token is registered before sending notification
+      console.log('[Checkout] Ensuring FCM token is registered...');
+      await initMessagingForUser(ownerUid);
+      
       // Send a Firebase push notification (no third-party SMS)
       setSmsStatus('Sending a notification to your device...');
       const result = await sendTicketSMS(
@@ -109,7 +134,7 @@ export default function Checkout() {
       if (result.success) {
         setSmsStatus('✅ Notification sent. You can also view tickets below or in My Tickets.');
       } else {
-        setSmsStatus(`⚠️ ${result.message}`);
+        setSmsStatus('⚠️ ' + result.message + ' Your tickets are saved in My Tickets.');
       }
   } catch (e) {
     console.error('Error assigning seats:', e);
@@ -168,6 +193,28 @@ export default function Checkout() {
                 Accepted formats: (843) 555-5555, 843-555-5555, or 8435555555
               </p>
             </div>
+          
+          {notificationPermission !== 'granted' && (
+            <div className="border-2 border-orange-300 rounded-xl p-4 bg-orange-50">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">🔔</span>
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900 mb-2">
+                    Enable Push Notifications (Recommended)
+                  </p>
+                  <p className="text-sm text-gray-700 mb-3">
+                    Get instant updates about your tickets right in your browser. No app needed!
+                  </p>
+                  <button
+                    onClick={handleEnableNotifications}
+                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium"
+                  >
+                    Enable Notifications
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           
         <button onClick={confirm} disabled={processing} className={`px-4 py-2 rounded-xl text-white ${processing ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'} transition-colors`}>
           {processing ? 'Processing...' : 'Confirm Purchase'}

@@ -46,7 +46,11 @@ export function AuthProvider({ children }) {
       }
       // Initialize push notifications and store device token
       try {
-        initMessagingForUser(user.uid);
+        initMessagingForUser(user.uid).then((token) => {
+          if (token) {
+            console.log('[Auth] FCM token registered for user');
+          }
+        });
       } catch (e) {
         console.warn('Failed to init messaging for user', e);
       }

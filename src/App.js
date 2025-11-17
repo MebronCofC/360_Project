@@ -4,6 +4,7 @@ import EventDetail from "./components/event-detail";
 import SectionSelect from "./components/section-select";
 import Checkout from "./components/checkout";
 import MyTickets from "./components/my-tickets";
+import NotificationTest from "./components/notification-test";
 
 import Login from "./components/auth/login";
 import Register from "./components/auth/register";
@@ -56,6 +57,10 @@ function App() {
       path: "/my-tickets",
       element: <MyTickets />,
     },
+      {
+        path: "/notification-test",
+        element: <NotificationTest />,
+      },
   ];
   let routesElement = useRoutes(routesArray);
   return (

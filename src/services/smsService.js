@@ -28,9 +28,8 @@ const functionsInstance = getFunctions(app, 'us-central1');
 export async function sendTicketSMS(phoneNumber, tickets, eventTitle, orderId) {
   try {
     const smsData = {
-      to: phoneNumber,
       campaignId: '7963690909297775523',
-      phoneNumber,
+      phoneNumber, // E.164 format +1XXXXXXXXXX
       tickets: tickets.map(t => ({
         ticketId: t.ticketId || t.id,
         seatId: t.seatId,
@@ -42,23 +41,43 @@ export async function sendTicketSMS(phoneNumber, tickets, eventTitle, orderId) {
       orderId
     };
 
+    // 1) Try Twilio SMS via callable function (requires functions config and deployment)
     try {
-      // Call Firebase Cloud Function (Firebase-only push notification)
-      const sendNotification = httpsCallable(functionsInstance, 'sendTicketNotification');
-      const result = await sendNotification({
+      const callable = httpsCallable(functionsInstance, 'sendTicketSMS');
+      const result = await callable({
+        phoneNumber: smsData.phoneNumber,
         tickets: smsData.tickets,
-        eventTitle,
-        orderId
+        eventTitle: smsData.eventTitle,
+        orderId: smsData.orderId
+      });
+      if (result?.data?.success) {
+        return { success: true, message: result.data.message || 'SMS sent' };
+      }
+      // If Twilio function returned non-success, fall back
+      console.warn('sendTicketSMS returned non-success:', result?.data);
+    } catch (twilioErr) {
+      console.warn('sendTicketSMS callable failed, falling back to push:', twilioErr);
+    }
+
+    // 2) Fallback: push notification to registered devices (no cost)
+    try {
+      const sendNotification = httpsCallable(functionsInstance, 'sendTicketNotification');
+      const notifyResult = await sendNotification({
+        tickets: smsData.tickets,
+        eventTitle: smsData.eventTitle,
+        orderId: smsData.orderId
       });
       return {
-        success: !!result?.data?.success,
-        message: result?.data?.success ? 'Notification sent to your device' : (result?.data?.message || 'No device registered for notifications')
+        success: !!notifyResult?.data?.success,
+        message: notifyResult?.data?.success
+          ? 'Notification sent to your device'
+          : (notifyResult?.data?.message || 'No device registered for notifications')
       };
-    } catch (functionError) {
-      console.warn('Notification function error:', functionError);
+    } catch (notifyErr) {
+      console.warn('sendTicketNotification failed:', notifyErr);
       return {
         success: false,
-        message: 'Unable to send push notification. You can view your tickets in My Tickets.'
+        message: 'Unable to send SMS or push. You can view your tickets in My Tickets.'
       };
     }
     
