@@ -2,6 +2,7 @@
 import { 
   checkSeatsAvailability, 
   assignSeatsInDB, 
+  assignSeatsAtomicInDB,
   releaseSeatInDB,
   getTicketsForEventFromDB,
   getEventInventoryDocFromDB
@@ -38,18 +39,25 @@ export async function areAvailable(eventId, seatIds = []) {
 /** 
  * Assign seats to an owner; throws if any already taken 
  */
-export async function assignSeats(eventId, seatIds = [], ownerUid, ticketIdBySeat = {}, eventTitle = "Event", startTime = null, endTime = null, userEmail = null, userName = null) {
+export async function assignSeats(eventId, seatIds = [], ownerUid, ticketIdBySeat = {}, eventTitle = "Event", startTime = null, endTime = null, userEmail = null, userName = null, { atomic = true } = {}) {
   try {
-    // Use provided event details or defaults
     const finalStartTime = startTime || new Date().toISOString();
-    
-    const orderId = await assignSeatsInDB(eventId, seatIds, ownerUid, eventTitle, finalStartTime, endTime, userEmail, userName);
-    
-    return seatIds.map(seatId => ({
-      seatId,
-      ticketId: ticketIdBySeat[seatId] || `t_${Math.random().toString(36).slice(2, 10)}`,
-      orderId
-    }));
+    if (atomic) {
+      const result = await assignSeatsAtomicInDB(eventId, seatIds, ownerUid, eventTitle, finalStartTime, endTime, userEmail, userName);
+      // Map into legacy shape for existing consumers
+      return seatIds.map(seatId => ({
+        seatId,
+        ticketId: ticketIdBySeat[seatId] || `${eventId}_${seatId}`,
+        orderId: result.orderId
+      }));
+    } else {
+      const orderId = await assignSeatsInDB(eventId, seatIds, ownerUid, eventTitle, finalStartTime, endTime, userEmail, userName);
+      return seatIds.map(seatId => ({
+        seatId,
+        ticketId: ticketIdBySeat[seatId] || `t_${Math.random().toString(36).slice(2, 10)}`,
+        orderId
+      }));
+    }
   } catch (error) {
     console.error("Error assigning seats:", error);
     throw error;

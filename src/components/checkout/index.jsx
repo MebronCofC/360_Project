@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { areAvailable, assignSeats } from "../../data/seatAssignments";
 import { useAuth } from "../../contexts/authContext";
@@ -27,10 +27,15 @@ export default function Checkout() {
   useEffect(() => {
     if (!pending) navigate("/events");
   }, [pending, navigate]);
+  const processingRef = useRef(false);
+  const [processing, setProcessing] = useState(false);
 
   if (!pending) return null;
 
   const confirm = async () => {
+     if (processingRef.current) return; // prevent double click race
+     processingRef.current = true;
+     setProcessing(true);
      if (!currentUser?.uid) {
        alert("Please log in before purchasing tickets.");
        navigate("/login");
@@ -74,8 +79,17 @@ export default function Checkout() {
     setPurchasedTickets(newTickets);
   } catch (e) {
     console.error('Error assigning seats:', e);
-    alert("One or more seats just got taken. Please reselect.");
-    return;
+    if (e.code === 'SEAT_TAKEN') {
+      alert(`Sorry, these seats were just taken: ${e.takenSeats.join(', ')}. Please reselect.`);
+    } else if (String(e.message || '').startsWith('FAILED_TAKEN:')) {
+      const seats = e.message.split(':')[1].split(',');
+      alert(`Sorry, these seats were just taken: ${seats.join(', ')}. Please reselect.`);
+    } else {
+      alert("One or more seats just got taken or an error occurred. Please reselect.");
+    }
+  } finally {
+    processingRef.current = false;
+    setProcessing(false);
   }
 };
 
@@ -93,8 +107,8 @@ export default function Checkout() {
       </div>
 
       {!saved ? (
-        <button onClick={confirm} className="px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">
-          Confirm Purchase
+        <button onClick={confirm} disabled={processing} className={`px-4 py-2 rounded-xl text-white ${processing ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'} transition-colors`}>
+          {processing ? 'Processing...' : 'Confirm Purchase'}
         </button>
       ) : (
         <div className="space-y-4">

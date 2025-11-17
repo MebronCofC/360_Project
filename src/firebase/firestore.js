@@ -11,7 +11,8 @@ import {
   where,
   serverTimestamp,
   writeBatch,
-  increment
+  increment,
+  runTransaction
 } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -709,4 +710,113 @@ export async function revokeTicketForSeatInDB(eventId, seatId) {
     console.error("Error revoking ticket:", error);
     throw error;
   }
+}
+
+// ==================== CONCURRENCY-SAFE / ATOMIC SEAT CLAIM ====================
+// First-writer-wins seat assignment using Firestore transaction.
+// Creates deterministic ticket document IDs: `${eventId}_${seatId}` to avoid duplicate seat issuance.
+// If a seat is already issued to another user, it is reported as taken.
+// If already issued to the same user, treated idempotently (success, reuses existing ticket).
+export async function assignSeatsAtomicInDB(eventId, seatIds, ownerUid, eventTitle, startTime, endTime = null, userEmail = null, userName = null) {
+  if (!eventId || !Array.isArray(seatIds) || seatIds.length === 0) {
+    throw new Error("No seats provided for assignment");
+  }
+  const orderId = `ord_${Math.random().toString(36).slice(2,10)}`;
+  const ticketsCol = collection(db, "tickets");
+  const upperOwner = String(ownerUid || '').toUpperCase();
+  const created = [];
+  const reused = [];
+  const taken = [];
+  try {
+    await runTransaction(db, async (tx) => {
+      for (const seatId of seatIds) {
+        const ticketRef = doc(ticketsCol, `${eventId}_${seatId}`);
+        const existingSnap = await tx.get(ticketRef);
+        if (existingSnap.exists()) {
+          const data = existingSnap.data();
+          // Only consider active issued tickets as blockers
+          if ((data.status || 'Issued') === 'Issued') {
+            if (data.ownerUid === ownerUid) {
+              // Idempotent repeat request by same user – reuse
+              reused.push(seatId);
+              continue;
+            }
+            // Seat taken by someone else
+            taken.push(seatId);
+            continue;
+          }
+          // Revoked/Invalid ticket: we can reissue
+        }
+        if (taken.includes(seatId)) continue; // safety
+        const section = String(seatId).split('-')[0];
+        tx.set(ticketRef, {
+          ticketId: `${eventId}_${seatId}`,
+          orderId,
+          ownerUid,
+          ownerEmail: userEmail || null,
+          ownerName: userName || null,
+          eventId,
+          eventTitle,
+          startTime,
+          endTime: endTime || null,
+          seatId,
+          section,
+          qrPayload: `ticket:${orderId}:${seatId}:${eventId}`,
+          status: 'Issued',
+          createdAt: serverTimestamp()
+        });
+        created.push(seatId);
+      }
+      if (taken.length) {
+        // Abort transaction – throw after evaluating all seats so user sees full list
+        throw new Error(`Seats already taken: ${taken.join(', ')}`);
+      }
+    });
+  } catch (err) {
+    if (taken.length) {
+      // Provide structured error info
+      const e = new Error(`FAILED_TAKEN:${taken.join(',')}`);
+      e.code = 'SEAT_TAKEN';
+      e.takenSeats = taken;
+      throw e;
+    }
+    throw err;
+  }
+
+  // Update aggregated inventory (non-blocking if permission denied)
+  try {
+    if (created.length) {
+      const invRef = doc(db, "eventInventories", eventId);
+      const sectionsUpdate = {};
+      let totalSeatsSold = 0;
+      for (const seatId of created) {
+        const section = String(seatId).split('-')[0];
+        if (!sectionsUpdate[section]) sectionsUpdate[section] = { taken: 0, unavailable: 0 };
+        if (upperOwner === 'ADMIN_UNAVAILABLE') {
+          sectionsUpdate[section].unavailable += 1;
+        } else {
+          sectionsUpdate[section].taken += 1;
+          totalSeatsSold += 1;
+        }
+      }
+      // Prepare Firestore field updates using increment
+      const sectionsField = {};
+      for (const [section, delta] of Object.entries(sectionsUpdate)) {
+        sectionsField[section] = {
+          taken: increment(delta.taken),
+          unavailable: increment(delta.unavailable),
+          total: totalSeatsForSectionRaw(section)
+        };
+      }
+      await setDoc(invRef, {
+        sections: sectionsField,
+        totalSeatsSold: increment(totalSeatsSold),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    }
+  } catch (invErr) {
+    console.warn("Inventory update failed (tickets still created):", invErr);
+  }
+
+  return { orderId, createdSeats: created, reusedSeats: reused };
 }

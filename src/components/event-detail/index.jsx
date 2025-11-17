@@ -27,6 +27,7 @@ export default function EventDetail() {
   const [sectionSeatsForAdmin, setSectionSeatsForAdmin] = useState([]);
   const [pendingStatusBySeat, setPendingStatusBySeat] = useState({});
   const [ticketsBySeatIdMap, setTicketsBySeatIdMap] = useState({});
+  const [seatActionInFlight, setSeatActionInFlight] = useState(false);
 
   // Section-based seat generation rules
   const LARGE_SECTIONS = useMemo(() => new Set([110,111,112,113,114,115,101,102,103,104,105,106,107,109]), []);
@@ -43,21 +44,20 @@ export default function EventDetail() {
   const generateSectionSeats = useCallback((section) => {
     const secStr = String(section);
     const upper = secStr.toUpperCase();
-    // President suite (labelled SUITE on chart)
-    if (upper.includes("SUITE")) {
+    if (upper.includes('SUITE')) {
       const rows = letters('A','C');
       const perRow = 10;
-      return rows.flatMap(r => Array.from({length: perRow}, (_,i) => ({
+      return rows.flatMap(r => Array.from({ length: perRow }, (_, i) => ({
         seatId: `${secStr}-${r}${i+1}`,
         label: `${r}${i+1}`,
         isAda: false,
       })));
     }
     const num = Number(secStr);
-  const isLarge = LARGE_SECTIONS.has(num);
+    const isLarge = LARGE_SECTIONS.has(num);
     const rows = isLarge ? letters('A','L') : letters('A','E');
     const perRow = 18;
-    return rows.flatMap(r => Array.from({length: perRow}, (_,i) => ({
+    return rows.flatMap(r => Array.from({ length: perRow }, (_, i) => ({
       seatId: `${secStr}-${r}${i+1}`,
       label: `${r}${i+1}`,
       isAda: false,
@@ -68,7 +68,7 @@ export default function EventDetail() {
     const loadData = async () => {
       try {
         const events = await getEvents();
-        const event = events.find((e) => e.id === eventId);
+        const event = events.find(e => e.id === eventId);
         setEv(event || null);
         if (event) {
           let eventSeats = [];
@@ -76,7 +76,6 @@ export default function EventDetail() {
             eventSeats = generateSectionSeats(sectionNumber);
           } else {
             eventSeats = await seatsForEvent(eventId);
-            // Admin seat list removed; using inventory-driven overview instead.
           }
           setSeats(eventSeats);
           const takenSeats = await getAssignedSeats(eventId);
@@ -102,29 +101,23 @@ export default function EventDetail() {
               setSectionUnavailable(false);
             }
           } else if (isAdmin) {
-            // Load section statistics for admin view
             const inventory = await getEventInventory(eventId);
             const allSections = [
-              110,111,112,113,114,115,101,102,103,104,105,106,107,109, // Large sections
-              210,211,213,214,215,216,201,202,203,204,205,206,207,208,209, // Small sections
+              110,111,112,113,114,115,101,102,103,104,105,106,107,109,
+              210,211,213,214,215,216,201,202,203,204,205,206,207,208,209,
               'SUITE'
             ];
             const stats = allSections.map(sec => {
               const secStr = String(sec);
               const info = inventory.sections?.[secStr];
-              // Calculate total seats for this section
               let total = 0;
-              if (secStr === 'SUITE') {
-                total = 3 * 10; // 3 rows, 10 seats each
-              } else if (LARGE_SECTIONS.has(Number(sec))) {
-                total = 12 * 18; // 12 rows, 18 seats each
-              } else if (SMALL_SECTIONS.has(Number(sec))) {
-                total = 5 * 18; // 5 rows, 18 seats each
-              }
+              if (secStr === 'SUITE') total = 3 * 10;
+              else if (LARGE_SECTIONS.has(Number(sec))) total = 12 * 18;
+              else if (SMALL_SECTIONS.has(Number(sec))) total = 5 * 18;
               return {
                 section: secStr,
                 taken: info?.taken || 0,
-                total: total,
+                total,
                 remaining: info?.remaining ?? total,
                 isSoldOut: inventory.soldOutSections?.includes(secStr) || false
               };
@@ -133,8 +126,8 @@ export default function EventDetail() {
           }
         }
       } catch (err) {
-        console.error("Error loading event detail", err);
-        alert("Failed to load event data");
+        console.error('Error loading event detail', err);
+        alert('Failed to load event data');
       } finally {
         setLoading(false);
       }
@@ -534,8 +527,11 @@ export default function EventDetail() {
                                                   </select>
                                                   {(pendingStatusBySeat[seat.seatId] && pendingStatusBySeat[seat.seatId] !== seat.status) && (
                                                     <button
-                                                      className="ml-2 text-xs px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                                                      disabled={seatActionInFlight}
+                                                      className={`ml-2 text-xs px-3 py-1 rounded text-white ${seatActionInFlight ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}
                                                       onClick={async () => {
+                                                        if (seatActionInFlight) return;
+                                                        setSeatActionInFlight(true);
                                                         const newStatus = pendingStatusBySeat[seat.seatId];
                                                         try {
                                                           if (newStatus === 'reserved') {
@@ -549,14 +545,12 @@ export default function EventDetail() {
                                                               if (owner === 'ADMIN_RESERVED' || owner === 'ADMIN_UNAVAILABLE') {
                                                                 await releaseSeat(eventId, seat.seatId, owner);
                                                               } else {
-                                                                // if a real user owns it, revoke per requirement
                                                                 await revokeTicketForSeatInDB(eventId, seat.seatId);
                                                               }
                                                             }
                                                           } else if (newStatus === 'revoke') {
                                                             await revokeTicketForSeatInDB(eventId, seat.seatId);
                                                           }
-                                                          // Refresh and clear pending; also force page refresh per requirement
                                                           setPendingStatusBySeat((prev)=>{ const n={...prev}; delete n[seat.seatId]; return n; });
                                                           await toggleSectionExpanded(expandedSection);
                                                           const takenSeats = await getAssignedSeats(eventId);
@@ -564,11 +558,13 @@ export default function EventDetail() {
                                                           window.location.reload();
                                                         } catch (err) {
                                                           console.error('Failed to apply change', err);
-                                                          alert('Failed to apply change');
+                                                          alert(err.code === 'SEAT_TAKEN' ? 'Seat was claimed simultaneously by another action.' : 'Failed to apply change');
+                                                        } finally {
+                                                          setSeatActionInFlight(false);
                                                         }
                                                       }}
                                                     >
-                                                      Confirm
+                                                      {seatActionInFlight ? 'Working...' : 'Confirm'}
                                                     </button>
                                                   )}
                                                   <span className={`text-xs px-2 py-1 rounded ${

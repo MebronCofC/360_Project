@@ -157,14 +157,14 @@ const Home = () => {
                                 className="h-16 sm:h-20 md:h-28 lg:h-32 w-auto flex-shrink-1 drop-shadow-lg border-2 border-white rounded"
                             />
                             <span className="text-center min-w-0 flex-shrink-1">Welcome to Cougar Courtside</span>
-                                                        {/* CofC logo on solid white background (no rounded corners) for readability over maroon */}
-                                                        <span className="inline-block bg-white flex-shrink-1 drop-shadow-lg px-[20px]">
-                                                            <img
-                                                                    src="/CofC_Logo.png"
-                                                                    alt="College of Charleston Logo"
-                                                                    className="h-16 sm:h-20 md:h-28 lg:h-32 w-auto"
-                                                            />
-                                                        </span>
+                                                                                                                                                                                                                                                                                        {/* CofC logo: shorter height, narrowed background */}
+                                                                                                                                                                                                                                                                                        <span className="inline-block bg-white flex-shrink-1 drop-shadow-lg rounded-lg overflow-hidden px-4 sm:px-5 md:px-6 h-20 sm:h-24 md:h-28 lg:h-32">
+                                                                                                                                                                                <img
+                                                                                                                                                                                        src="/CofC_Logo.png"
+                                                                                                                                                                                        alt="College of Charleston Logo"
+                                                                                                                                                                                        className="block h-full w-[260px] sm:w-[300px] md:w-[360px] lg:w-[420px] object-contain"
+                                                                                                                                                                                    />
+                                                                                                                                            </span>
                         </div>
                     </h1>
                   </div>
