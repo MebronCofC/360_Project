@@ -4,6 +4,8 @@ import { areAvailable, assignSeats } from "../../data/seatAssignments";
 import { useAuth } from "../../contexts/authContext";
 import { getTicketsForUserFromDB } from "../../firebase/firestore";
 import { QRCodeCanvas } from "qrcode.react";
+import { validateAndNormalizePhone, formatPhoneForDisplay } from "../../utils/phoneUtils";
+import { sendTicketSMS } from "../../services/smsService";
 
 
 
@@ -13,6 +15,9 @@ export default function Checkout() {
   const navigate = useNavigate();
   const [saved, setSaved] = useState(false);
   const [purchasedTickets, setPurchasedTickets] = useState([]);
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const [phoneError, setPhoneError] = useState('');
+      const [smsStatus, setSmsStatus] = useState('');
 
   const pending = useMemo(() => {
     try { return JSON.parse(localStorage.getItem("pendingOrder") || "null"); }
@@ -41,6 +46,18 @@ export default function Checkout() {
        navigate("/login");
        return;
      }
+  
+    // Validate phone number
+    const phoneValidation = validateAndNormalizePhone(phoneNumber);
+    if (!phoneValidation.isValid) {
+      setPhoneError(phoneValidation.error);
+      processingRef.current = false;
+      setProcessing(false);
+      return;
+    }
+    setPhoneError('');
+    const normalizedPhone = phoneValidation.normalized;
+  
   // 1) check for conflicts (already owned seats)
   const conflicts = await areAvailable(pending.eventId, pending.seats);
     
@@ -77,6 +94,21 @@ export default function Checkout() {
     const tickets = await getTicketsForUserFromDB(ownerUid);
     const newTickets = tickets.filter(t => t.orderId === newOrderId);
     setPurchasedTickets(newTickets);
+    
+      // Send SMS with tickets
+      setSmsStatus('Sending tickets to your phone...');
+      const smsResult = await sendTicketSMS(
+        normalizedPhone,
+        newTickets,
+        pending.eventTitle,
+        newOrderId
+      );
+    
+      if (smsResult.success) {
+        setSmsStatus(`✅ Tickets sent to ${formatPhoneForDisplay(normalizedPhone)}`);
+      } else {
+        setSmsStatus(`⚠️ ${smsResult.message}`);
+      }
   } catch (e) {
     console.error('Error assigning seats:', e);
     if (e.code === 'SEAT_TAKEN') {
@@ -107,12 +139,50 @@ export default function Checkout() {
       </div>
 
       {!saved ? (
+          <>
+            <div className="border rounded-xl p-4 bg-blue-50">
+              <label className="block mb-2 font-medium text-gray-700">
+                📱 Phone Number <span className="text-red-500">*</span>
+              </label>
+              <p className="text-xs text-gray-600 mb-3">
+                Required to receive your tickets via text message with QR codes
+              </p>
+              <input
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => {
+                  setPhoneNumber(e.target.value);
+                  setPhoneError('');
+                }}
+                placeholder="(843) 555-5555"
+                className={`w-full px-4 py-2 rounded-lg border ${
+                  phoneError ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                } focus:outline-none focus:ring-2 focus:ring-emerald-500`}
+              />
+              {phoneError && (
+                <p className="text-red-600 text-sm mt-2">⚠️ {phoneError}</p>
+              )}
+              <p className="text-xs text-gray-500 mt-2">
+                Accepted formats: (843) 555-5555, 843-555-5555, or 8435555555
+              </p>
+            </div>
+          
         <button onClick={confirm} disabled={processing} className={`px-4 py-2 rounded-xl text-white ${processing ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'} transition-colors`}>
           {processing ? 'Processing...' : 'Confirm Purchase'}
         </button>
+          </>
       ) : (
         <div className="space-y-4">
           <div className="text-emerald-700 font-medium">Purchase complete — tickets issued.</div>
+            {smsStatus && (
+              <div className={`text-sm p-3 rounded-lg ${
+                smsStatus.includes('✅') ? 'bg-green-50 text-green-800' : 
+                smsStatus.includes('⚠️') ? 'bg-yellow-50 text-yellow-800' : 
+                'bg-blue-50 text-blue-800'
+              }`}>
+                {smsStatus}
+              </div>
+            )}
           {orderId && (
             <div className="text-xs text-gray-500">Order ID: {orderId}</div>
           )}
