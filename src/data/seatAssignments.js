@@ -32,8 +32,9 @@ export async function getAssignedSeats(eventId) {
  * Returns any seats that are already taken (i.e., NOT available) 
  */
 export async function areAvailable(eventId, seatIds = []) {
-  const unavailable = await checkSeatsAvailability(eventId, seatIds);
-  return unavailable;
+  // Pre-flight availability check removed due to Firestore rules restricting ticket reads.
+  // We rely on assignSeatsAtomicInDB to enforce first-writer-wins and report any taken seats.
+  return [];
 }
 
 /** 

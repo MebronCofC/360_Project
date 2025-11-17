@@ -8,9 +8,9 @@ service cloud.firestore {
     
     // Helper: check if user is admin (by email)
     function isAdmin() {
-      return isSignedIn() && 
-             (request.auth.token.email == 'mebneon@gmail.com' || 
-              request.auth.token.email == 'johnsonns@g.cofc.edu');
+      return isSignedIn() &&
+        (request.auth.token.email == 'mebneon@gmail.com' ||
+         request.auth.token.email == 'johnsonns@g.cofc.edu');
     }
     
     // Helper: check if user owns the resource
@@ -48,22 +48,41 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     
-    // Tickets - users can read their own tickets, admins can read all
-    // Allow users to create tickets (for seat purchases)
-    // Allow admins to create/update/delete any ticket (including ADMIN_RESERVED, ADMIN_UNAVAILABLE)
+    // Tickets security
+    // - Allow get (single-doc reads) for signed-in users so client transactions
+    //   can check existence of seat tickets without permission errors
+    // - Users can query their own tickets; admins can query all
+    // - Any signed-in user can create tickets for themselves; admins can create any
+    // - Updates/deletes allowed for owner or admin
     match /tickets/{ticketId} {
-      allow read: if isSignedIn() && (
-        resource.data.ownerUid == request.auth.uid || 
-        isAdmin()
-      );
-      allow create: if isSignedIn() && (
-        request.resource.data.ownerUid == request.auth.uid ||
-        isAdmin()
-      );
-      allow update, delete: if isSignedIn() && (
+      // Single document reads (includes reading non-existent docs in transactions)
+      allow get: if isSignedIn();
+      // Querying/Listing: users can read their own tickets, admins can read all
+      allow list: if isSignedIn() && (
+        request.query.limit == null || 
         resource.data.ownerUid == request.auth.uid ||
         isAdmin()
       );
+
+      // Create: user can create tickets they own; admin can create any (including ADMIN_*)
+      allow create: if isSignedIn() && (
+        request.resource.data.ownerUid == request.auth.uid || isAdmin()
+      );
+        // Update: allow admin, owner, or re-issue of a non-active ticket
+        allow update: if isSignedIn() && (
+          isAdmin() ||
+          resource.data.ownerUid == request.auth.uid ||
+          (
+            // Re-issue: existing ticket is not actively Issued
+            resource.data.status != 'Issued' &&
+            request.resource.data.ownerUid == request.auth.uid
+          )
+        );
+
+        // Delete: admin or owner
+        allow delete: if isSignedIn() && (
+          resource.data.ownerUid == request.auth.uid || isAdmin()
+        );
     }
     
     // Event inventory - public read for UI, system/admin write

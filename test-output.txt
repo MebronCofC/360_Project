@@ -1,0 +1,192 @@
+
+> react-firebase-auth@0.1.0 test
+> react-scripts test --testPathPattern=securityAndAuth --verbose
+
+FAIL src/__tests__/securityAndAuth.test.jsx
+  Security: Input Validation
+    Phone Number Validation
+      ✕ should accept valid US phone formats (2 ms)
+      ✕ should reject invalid phone numbers
+      ✕ should prevent SQL injection attempts in phone field
+  Security: Authorization - Admin Access
+    ✓ should identify admin users correctly (1 ms)
+    ✓ should restrict admin-only operations to admins
+  Security: Seat Assignment Concurrency Protection
+    ✓ should detect seat conflicts via transaction (1 ms)
+    ✓ should prevent double-booking through atomic transactions (1 ms)
+  Security: Error Handling
+    ✓ should handle Firestore permission errors gracefully
+    ✓ should prevent XSS in event titles and descriptions (2 ms)
+  Security: Authentication State Management
+    ✓ should clear sensitive data on logout (1 ms)
+    ✓ should validate user session before sensitive operations (2 ms)
+
+  ● Security: Input Validation › Phone Number Validation › should accept valid US phone formats
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: ""
+    Received: null
+
+      24 |         expect(result.isValid).toBe(true);
+      25 |         expect(result.normalized).toBe('+18435555555');
+    > 26 |         expect(result.error).toBe('');
+         |                              ^
+      27 |       });
+      28 |     });
+      29 |
+
+      at forEach (src/__tests__/securityAndAuth.test.jsx:26:30)
+          at Array.forEach (<anonymous>)
+      at Object.<anonymous> (src/__tests__/securityAndAuth.test.jsx:22:20)
+      at TestScheduler.scheduleTests (node_modules/@jest/core/build/TestScheduler.js:333:13)
+      at runJest (node_modules/@jest/core/build/runJest.js:404:19)
+
+  ● Security: Input Validation › Phone Number Validation › should reject invalid phone numbers
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: ""
+    Received: null
+
+      40 |         const result = validateAndNormalizePhone(format);
+      41 |         expect(result.isValid).toBe(false);
+    > 42 |         expect(result.normalized).toBe('');
+         |                                   ^
+      43 |         expect(result.error).toBeTruthy();
+      44 |       });
+      45 |     });
+
+      at forEach (src/__tests__/securityAndAuth.test.jsx:42:35)
+          at Array.forEach (<anonymous>)
+      at Object.<anonymous> (src/__tests__/securityAndAuth.test.jsx:39:22)
+      at TestScheduler.scheduleTests (node_modules/@jest/core/build/TestScheduler.js:333:13)
+      at runJest (node_modules/@jest/core/build/runJest.js:404:19)
+
+  ● Security: Input Validation › Phone Number Validation › should prevent SQL injection attempts in phone field
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "Invalid"
+    Received string:    "Please enter a valid 10-digit US phone number"
+
+      55 |         const result = validateAndNormalizePhone(input);
+      56 |         expect(result.isValid).toBe(false);
+    > 57 |         expect(result.error).toContain('Invalid');
+         |                              ^
+      58 |       });
+      59 |     });
+      60 |   });
+
+      at forEach (src/__tests__/securityAndAuth.test.jsx:57:30)
+          at Array.forEach (<anonymous>)
+      at Object.<anonymous> (src/__tests__/securityAndAuth.test.jsx:54:23)
+      at TestScheduler.scheduleTests (node_modules/@jest/core/build/TestScheduler.js:333:13)
+      at runJest (node_modules/@jest/core/build/runJest.js:404:19)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 8 passed, 11 total
+Snapshots:   0 total
+Time:        1.316 s
+Ran all test suites matching /securityAndAuth/i.
+
+[0;33mOne of your dependencies, babel-preset-react-app, is importing the
+"@babel/plugin-proposal-private-property-in-object" package without
+declaring it in its dependencies. This is currently working because
+"@babel/plugin-proposal-private-property-in-object" is already in your
+node_modules folder for unrelated reasons, but it [1mmay break at any time[0;33m.
+
+babel-preset-react-app is part of the create-react-app project, [1mwhich
+is not maintianed anymore[0;33m. It is thus unlikely that this bug will
+ever be fixed. Add "@babel/plugin-proposal-private-property-in-object" to
+your devDependencies to work around this error. This will make this message
+go away.[0m
+  
+FAIL src/__tests__/securityAndAuth.test.jsx
+  Security: Input Validation
+    Phone Number Validation
+      ✕ should accept valid US phone formats (2 ms)
+      ✕ should reject invalid phone numbers (2 ms)
+      ✕ should prevent SQL injection attempts in phone field
+  Security: Authorization - Admin Access
+    ✓ should identify admin users correctly
+    ✓ should restrict admin-only operations to admins (6 ms)
+  Security: Seat Assignment Concurrency Protection
+    ✓ should detect seat conflicts via transaction
+    ✓ should prevent double-booking through atomic transactions (1 ms)
+  Security: Error Handling
+    ✓ should handle Firestore permission errors gracefully
+    ✓ should prevent XSS in event titles and descriptions (3 ms)
+  Security: Authentication State Management
+    ✓ should clear sensitive data on logout
+    ✓ should validate user session before sensitive operations (3 ms)
+
+  ● Security: Input Validation › Phone Number Validation › should accept valid US phone formats
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: ""
+    Received: null
+
+      24 |         expect(result.isValid).toBe(true);
+      25 |         expect(result.normalized).toBe('+18435555555');
+    > 26 |         expect(result.error).toBe('');
+         |                              ^
+      27 |       });
+      28 |     });
+      29 |
+
+      at forEach (src/__tests__/securityAndAuth.test.jsx:26:30)
+          at Array.forEach (<anonymous>)
+      at Object.<anonymous> (src/__tests__/securityAndAuth.test.jsx:22:20)
+      at TestScheduler.scheduleTests (node_modules/@jest/core/build/TestScheduler.js:333:13)
+      at runJest (node_modules/@jest/core/build/runJest.js:404:19)
+
+  ● Security: Input Validation › Phone Number Validation › should reject invalid phone numbers
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: ""
+    Received: null
+
+      40 |         const result = validateAndNormalizePhone(format);
+      41 |         expect(result.isValid).toBe(false);
+    > 42 |         expect(result.normalized).toBe('');
+         |                                   ^
+      43 |         expect(result.error).toBeTruthy();
+      44 |       });
+      45 |     });
+
+      at forEach (src/__tests__/securityAndAuth.test.jsx:42:35)
+          at Array.forEach (<anonymous>)
+      at Object.<anonymous> (src/__tests__/securityAndAuth.test.jsx:39:22)
+      at TestScheduler.scheduleTests (node_modules/@jest/core/build/TestScheduler.js:333:13)
+      at runJest (node_modules/@jest/core/build/runJest.js:404:19)
+
+  ● Security: Input Validation › Phone Number Validation › should prevent SQL injection attempts in phone field
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "Invalid"
+    Received string:    "Please enter a valid 10-digit US phone number"
+
+      55 |         const result = validateAndNormalizePhone(input);
+      56 |         expect(result.isValid).toBe(false);
+    > 57 |         expect(result.error).toContain('Invalid');
+         |                              ^
+      58 |       });
+      59 |     });
+      60 |   });
+
+      at forEach (src/__tests__/securityAndAuth.test.jsx:57:30)
+          at Array.forEach (<anonymous>)
+      at Object.<anonymous> (src/__tests__/securityAndAuth.test.jsx:54:23)
+      at TestScheduler.scheduleTests (node_modules/@jest/core/build/TestScheduler.js:333:13)
+      at runJest (node_modules/@jest/core/build/runJest.js:404:19)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 8 passed, 11 total
+Snapshots:   0 total
+Time:        1.117 s
+Ran all test suites matching /securityAndAuth/i.
+

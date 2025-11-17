@@ -1,7 +1,6 @@
 import React, { useContext, useState, useEffect } from "react";
 import { auth } from "../../firebase/firebase";
 import { upsertUserProfileInDB } from "../../firebase/firestore";
-import { initMessagingForUser } from "../../firebase/messaging";
 // import { GoogleAuthProvider } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -43,16 +42,6 @@ export function AuthProvider({ children }) {
         upsertUserProfileInDB(user);
       } catch (e) {
         console.warn("Failed to upsert user profile", e);
-      }
-      // Initialize push notifications and store device token
-      try {
-        initMessagingForUser(user.uid).then((token) => {
-          if (token) {
-            console.log('[Auth] FCM token registered for user');
-          }
-        });
-      } catch (e) {
-        console.warn('Failed to init messaging for user', e);
       }
       // admin detection (normalize emails to avoid case/whitespace mismatches)
       const adminEmails = [
