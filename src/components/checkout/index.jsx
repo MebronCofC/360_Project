@@ -26,6 +26,13 @@ export default function Checkout() {
   // Use 0 if pending is null to avoid error
   const total = pending ? pending.subtotal * 0.8 : 0; // apply 20% demo student discount
 
+  // Payment form state
+  const [cardNumber, setCardNumber] = useState('');
+  const [nameOnCard, setNameOnCard] = useState('');
+  const [expirationDate, setExpirationDate] = useState('');
+  const [securityCode, setSecurityCode] = useState('');
+  const [paymentError, setPaymentError] = useState('');
+
   useEffect(() => {
     if (!pending) navigate("/events");
   }, [pending, navigate]);
@@ -36,8 +43,45 @@ export default function Checkout() {
 
   if (!pending) return null;
 
+  const validatePayment = () => {
+    setPaymentError('');
+    
+    // Card number: must be 16 digits
+    const cleanedCard = cardNumber.replace(/\s/g, '');
+    if (!/^\d{16}$/.test(cleanedCard)) {
+      setPaymentError('Card number must be 16 digits');
+      return false;
+    }
+    
+    // Name on card: must not be empty
+    if (!nameOnCard.trim()) {
+      setPaymentError('Name on card is required');
+      return false;
+    }
+    
+    // Expiration date: MM/YY format
+    if (!/^\d{2}\/\d{2}$/.test(expirationDate)) {
+      setPaymentError('Expiration date must be in MM/YY format');
+      return false;
+    }
+    
+    // Security code: 3 or 4 digits
+    if (!/^\d{3,4}$/.test(securityCode)) {
+      setPaymentError('Security code must be 3 or 4 digits');
+      return false;
+    }
+    
+    return true;
+  };
+
   const confirm = async () => {
      if (processingRef.current) return; // prevent double click race
+     
+     // Validate payment before processing
+     if (!validatePayment()) {
+       return;
+     }
+     
      processingRef.current = true;
      setProcessing(true);
      if (!currentUser?.uid) {
@@ -116,6 +160,86 @@ export default function Checkout() {
 
       {!saved ? (
           <>
+            {/* Payment Section */}
+            <div className="border rounded-xl p-6 space-y-4 bg-white">
+              <h2 className="text-lg font-semibold mb-4">Payment</h2>
+              <p className="text-sm text-gray-600 mb-4">All transactions are secure and encrypted.</p>
+              
+              <div className="space-y-4">
+                {/* Card Number */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Card number
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="1234 5678 9012 3456"
+                    value={cardNumber}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\s/g, '');
+                      const formatted = value.match(/.{1,4}/g)?.join(' ') || value;
+                      setCardNumber(formatted);
+                    }}
+                    maxLength="19"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  />
+                </div>
+
+                {/* Name on Card */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Name on card
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="John Doe"
+                    value={nameOnCard}
+                    onChange={(e) => setNameOnCard(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  />
+                </div>
+
+                {/* Expiration Date and Security Code */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Expiration date (MM/YY)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="12/25"
+                      value={expirationDate}
+                      onChange={(e) => {
+                        let value = e.target.value.replace(/\D/g, '');
+                        if (value.length >= 2) {
+                          value = value.slice(0, 2) + '/' + value.slice(2, 4);
+                        }
+                        setExpirationDate(value);
+                      }}
+                      maxLength="5"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Security code
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="123"
+                      value={securityCode}
+                      onChange={(e) => setSecurityCode(e.target.value.replace(/\D/g, ''))}
+                      maxLength="4"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {paymentError && (
+                <div className="text-red-600 text-sm mt-2">{paymentError}</div>
+              )}
+            </div>
             
           
         <button onClick={confirm} disabled={processing} className={`px-4 py-2 rounded-xl text-white ${processing ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'} transition-colors`}>
